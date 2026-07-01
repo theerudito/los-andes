@@ -27,6 +27,7 @@ func ObtenerClientes(c *fiber.Ctx) error {
 		SELECT
 			c.cliente_id,
 			c.identificacion,
+			c.tipo_identificacion,
 			c.nombres,
 			c.apellidos,
 			c.telefono,
@@ -50,6 +51,7 @@ func ObtenerClientes(c *fiber.Ctx) error {
 		err = rows.Scan(
 			&cliente.ClienteId,
 			&cliente.Identificacion,
+			&cliente.TipoIdentificacion,
 			&cliente.Nombres,
 			&cliente.Apellidos,
 			&cliente.Telefono,
@@ -88,6 +90,7 @@ func ObtenerCliente(c *fiber.Ctx) error {
 		SELECT
 			c.cliente_id,
 			c.identificacion,
+			c.tipo_identificacion,
 			c.nombres,
 			c.apellidos,
 			c.telefono,
@@ -111,6 +114,7 @@ func ObtenerCliente(c *fiber.Ctx) error {
 		err = rows.Scan(
 			&cliente.ClienteId,
 			&cliente.Identificacion,
+			&cliente.TipoIdentificacion,
 			&cliente.Nombres,
 			&cliente.Apellidos,
 			&cliente.Telefono,
@@ -150,6 +154,7 @@ func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
 		SELECT
 			c.cliente_id,
 			c.identificacion,
+			c.tipo_identificacion,
 			c.nombres,
 			c.apellidos,
 			c.telefono,
@@ -173,6 +178,7 @@ func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
 		err = rows.Scan(
 			&cliente.ClienteId,
 			&cliente.Identificacion,
+			&cliente.TipoIdentificacion,
 			&cliente.Nombres,
 			&cliente.Apellidos,
 			&cliente.Telefono,
