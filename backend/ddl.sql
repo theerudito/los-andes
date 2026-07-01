@@ -49,6 +49,7 @@ CREATE TABLE
   tecnicos (
     tecnico_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     identificacion VARCHAR(13) UNIQUE NOT NULL,
+    tipo_identificacion CHAR(1) NOT NULL,
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
@@ -66,6 +67,7 @@ CREATE TABLE
   clientes (
     cliente_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     identificacion VARCHAR(13) UNIQUE NOT NULL,
+    tipo_identificacion CHAR(1) NOT NULL,
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     telefono VARCHAR(20),
