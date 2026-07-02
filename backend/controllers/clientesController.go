@@ -41,7 +41,7 @@ func ObtenerClientes(c *fiber.Ctx) error {
 			c.cliente_id DESC`)
 
 	if err != nil {
-		//_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
+		_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
@@ -61,7 +61,7 @@ func ObtenerClientes(c *fiber.Ctx) error {
 			&cliente.FechaModificacion)
 
 		if err != nil {
-			//_ = helpers.InsertLogsError(conn, "movie", "Error al leer los registros")
+			_ = helpers.InsertLogsError(conn, "movie", "Error al leer los registros")
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
@@ -104,7 +104,7 @@ func ObtenerCliente(c *fiber.Ctx) error {
 			c.cliente_id = $1`, id)
 
 	if err != nil {
-		//_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
+		_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
@@ -125,7 +125,7 @@ func ObtenerCliente(c *fiber.Ctx) error {
 		)
 
 		if err != nil {
-			//_ = helpers.InsertLogsError(conn, "movie", "Error al leer los registros")
+			_ = helpers.InsertLogsError(conn, "movie", "Error al leer los registros")
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
@@ -141,6 +141,7 @@ func ObtenerCliente(c *fiber.Ctx) error {
 }
 
 func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
+
 	var (
 		clientes []models.Clientes
 		cliente  models.Clientes
@@ -168,7 +169,7 @@ func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
 			c.identificacion = $1`, valor)
 
 	if err != nil {
-		//_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
+		_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
@@ -188,7 +189,7 @@ func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
 			&cliente.FechaModificacion)
 
 		if err != nil {
-			//_ = helpers.InsertLogsError(conn, "movie", "Error al leer los registros")
+			_ = helpers.InsertLogsError(conn, "movie", "Error al leer los registros")
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
@@ -283,6 +284,7 @@ func CrearCliente(c *fiber.Ctx) error {
 }
 
 func ModificarCliente(c *fiber.Ctx) error {
+
 	var (
 		ClienteId int
 		conn      = database.GetDB()
@@ -326,9 +328,8 @@ func ModificarCliente(c *fiber.Ctx) error {
 			telefono 							= $5,
 			email 								= $6,
 			direccion 						= $7,
-			fecha_creacion 				= $8,
-			fecha_modificacion 		= $9
-		WHERE cliente_id 				= $10`,
+			fecha_modificacion 		= $8
+		WHERE cliente_id 				= $9`,
 		cliente.Identificacion,
 		helpers.TipoIdentificacion(cliente.TipoIdentificacion),
 		strings.ToUpper(cliente.Nombres),
@@ -336,7 +337,6 @@ func ModificarCliente(c *fiber.Ctx) error {
 		cliente.Telefono,
 		cliente.Email,
 		strings.ToUpper(cliente.Direccion),
-		time.Now(),
 		time.Now(),
 		cliente.ClienteId)
 
@@ -371,8 +371,7 @@ func EliminarCliente(c *fiber.Ctx) error {
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	qCliente := `SELECT COUNT(*) FROM clientes WHERE cliente_id = $1`
-	err = conn.QueryRow(qCliente, id).Scan(&ClienteId)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM clientes WHERE cliente_id = $1`, id).Scan(&ClienteId)
 
 	if err != nil {
 
@@ -394,9 +393,7 @@ func EliminarCliente(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
-	dCliente := `DELETE FROM clientes WHERE cliente_id = $1`
-
-	_, err = tx.Exec(dCliente, id)
+	_, err = tx.Exec(`DELETE FROM clientes WHERE cliente_id = $1`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error eliminando el registro "+err.Error())
