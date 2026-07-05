@@ -85,7 +85,7 @@ func ObtenerEquipos(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
-		equipos = append(equipos, marca)
+		equipos = append(equipos, equipo)
 	}
 
 	if len(equipos) == 0 {
