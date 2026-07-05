@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"los_andes/database"
+	"los_andes/router"
 	"os"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,7 +23,7 @@ func main() {
 
 	defer database.GetDB().Close()
 
-	SetupRoutes(app)
+	router.SetupRoutes(app)
 
 	_ = app.Listen(fmt.Sprintf(":%s", os.Getenv("PortServer")))
 
