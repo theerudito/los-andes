@@ -2,39 +2,53 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
+	"sync"
 
-	_ "github.com/lib/pq"
+	_ "modernc.org/sqlite"
 )
 
 type MyDB struct {
 	DB *sql.DB
 }
 
-var instance *MyDB
+var (
+	instance *MyDB
+	once     sync.Once
+)
 
 func InitDB() {
-	if instance != nil {
-		return
-	}
 
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", os.Getenv("ServerDB"), os.Getenv("PortDB"), os.Getenv("UserDB"), os.Getenv("PasswordBD"), os.Getenv("NameDB"))
+	once.Do(func() {
 
-	db, err := sql.Open(os.Getenv("DriverDB"), dsn)
+		db, err := sql.Open("sqlite", "istla.db")
+		if err != nil {
+			log.Fatalf("❌ Error al abrir SQLite: %v", err)
+		}
 
-	if err != nil {
-		log.Fatalf("Error al abrir la base de datos: %v", err)
-	}
+		if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+			log.Fatalf("❌ Error activando foreign keys: %v", err)
+		}
 
-	if err := db.Ping(); err != nil {
-		log.Fatalf("No se pudo conectar a la base de datos: %v", err)
-	}
+		if err := db.Ping(); err != nil {
+			log.Fatalf("❌ No se pudo conectar a SQLite: %v", err)
+		}
 
-	log.Println("✅ Conectado a la base de datos:", os.Getenv("DriverDB"))
+		log.Println("✅ Conectado a SQLite exitosamente.")
 
-	instance = &MyDB{DB: db}
+		ejecutarScriptSQL(db, "ddl.sql")
+
+		if debeEjecutarDML(db) {
+			log.Println("🔹 Detectada base de datos nueva. Ejecutando dml.sql...")
+			ejecutarScriptSQL(db, "dml.sql")
+			log.Println("✅ dml.sql aplicado correctamente.")
+		} else {
+			log.Println("skip ⏭️ dml.sql omitido: Los datos iniciales ya existen en la base de datos.")
+		}
+
+		instance = &MyDB{DB: db}
+	})
 }
 
 func GetDB() *sql.DB {
@@ -42,4 +56,26 @@ func GetDB() *sql.DB {
 		InitDB()
 	}
 	return instance.DB
+}
+
+func debeEjecutarDML(db *sql.DB) bool {
+	var count int
+
+	err := db.QueryRow("SELECT COUNT(*) FROM config_inicial WHERE inicializado = 1").Scan(&count)
+	if err != nil {
+		return true
+	}
+	return count == 0
+}
+
+func ejecutarScriptSQL(db *sql.DB, rutaArchivo string) {
+	contenido, err := os.ReadFile(rutaArchivo)
+	if err != nil {
+		log.Fatalf("❌ Error crítico al leer el archivo %s: %v", rutaArchivo, err)
+	}
+
+	_, err = db.Exec(string(contenido))
+	if err != nil {
+		log.Fatalf("❌ Error crítico al ejecutar las sentencias de %s: %v", rutaArchivo, err)
+	}
 }

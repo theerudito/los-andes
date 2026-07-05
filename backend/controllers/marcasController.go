@@ -17,19 +17,18 @@ func ObtenerMarcas(c *fiber.Ctx) error {
 
 	var (
 		marcas []models.Marcas
-		marca  models.Marcas
-		conn   = database.GetDB()
-		rows   *sql.Rows
-		err    error
+
+		conn = database.GetDB()
+		rows *sql.Rows
+		err  error
 	)
 
 	rows, err = conn.Query(`
 		SELECT
 			m.marca_id,
 			m.nombre,
-			m.direccion,
-			m.fecha_creacion,
-			m.fecha_modificacion
+			COALESCE(strftime('%d/%m/%Y', m.fecha_creacion), '') AS fecha_creacion,
+      COALESCE(strftime('%d/%m/%Y', m.fecha_modificacion), '') AS fecha_modificacion
 		FROM 
 			marcas AS m
     ORDER BY 
@@ -43,6 +42,9 @@ func ObtenerMarcas(c *fiber.Ctx) error {
 	defer rows.Close()
 
 	for rows.Next() {
+
+		var marca models.Marcas
+
 		err = rows.Scan(
 			&marca.MarcaId,
 			&marca.Nombre,
@@ -80,8 +82,8 @@ func ObtenerMarca(c *fiber.Ctx) error {
 		SELECT
 			m.marca_id,
 			m.nombre,
-			m.fecha_creacion,
-			m.fecha_modificacion
+			COALESCE(strftime('%d/%m/%Y', m.fecha_creacion), '') AS fecha_creacion,
+      COALESCE(strftime('%d/%m/%Y', m.fecha_modificacion), '') AS fecha_modificacion
 		FROM 
 			marcas AS m
 		WHERE 

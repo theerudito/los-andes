@@ -39,6 +39,7 @@ func SetupRoutes(app *fiber.App) {
 	// tecnicos
 	v1.Get("/tecnico", controllers.ObtenerTecnicos)
 	v1.Get("/tecnico/:id", controllers.ObtenerTecnico)
+	v1.Get("/tecnico/:identificacion", controllers.ObtenerTecnicoPorIdentificacion)
 	v1.Post("/tecnico", controllers.CrearTecnico)
 	v1.Put("/tecnico", controllers.ModificarTecnico)
 	v1.Delete("/tecnico/:id", controllers.EliminarTecnico)

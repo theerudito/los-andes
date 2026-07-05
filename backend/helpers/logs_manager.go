@@ -10,8 +10,9 @@ func InsertLogsError(exec ExecutorDB, tableName string, message string) error {
 
 func InsertLogs(exec ExecutorDB, action string, tableName string, recordId int, description string) error {
 	query := `
-        INSERT INTO log_actions (action, table_name, record_id, description)
-        VALUES ($1, $2, $3, $4)`
-	_, err := exec.Exec(query, action, tableName, recordId, description)
+        INSERT INTO log_ok (modulo, accion, registro_id, descripcion)
+        VALUES (?, ?, ?, ?)`
+
+	_, err := exec.Exec(query, tableName, action, recordId, description)
 	return err
 }

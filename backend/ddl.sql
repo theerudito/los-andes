@@ -1,183 +1,142 @@
 -- =============================================================================
--- PROYECTO: GESTIÓN DE MANTENIMIENTO DE COMPUTADORAS
--- BACKEND: Go | BASE DE DATOS: PostgreSQL 
+-- PROYECTO: GESTIÓN DE MANTENIMIENTO DE COMPUTADORAS (ESTRUCTURA CORREGIDA)
+-- BASE DE DATOS: SQLite
 -- =============================================================================
-CREATE DATABASE los_andes;
+-- Tabla de control de inicialización
+CREATE TABLE
+  IF NOT EXISTS config_inicial (
+    inicializado INTEGER PRIMARY KEY CHECK (inicializado = 1)
+  );
 
--- 1. LIMPIEZA DE TABLAS EN ORDEN DE DEPENDENCIAS
-DROP TABLE IF EXISTS log_error CASCADE;
-
-DROP TABLE IF EXISTS log_ok CASCADE;
-
-DROP TABLE IF EXISTS entregas CASCADE;
-
-DROP TABLE IF EXISTS historial_reparaciones CASCADE;
-
-DROP TABLE IF EXISTS cuentas_reparacion CASCADE;
-
-DROP TABLE IF EXISTS equipos CASCADE;
-
-DROP TABLE IF EXISTS clientes CASCADE;
-
-DROP TABLE IF EXISTS tecnicos CASCADE;
-
-DROP TABLE IF EXISTS marcas CASCADE;
-
-DROP TABLE IF EXISTS estados_reparacion CASCADE;
-
--- =============================================================================
--- 2. TABLAS DE CATÁLOGO / PARÁMETROS (MAESTRAS INDEPENDIENTES)
--- =============================================================================
 -- tabla de Estados de Reparación
 CREATE TABLE
-  estados_reparacion (
-    estado_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nombre VARCHAR(50) UNIQUE NOT NULL -- 'Recibido', 'En diagnóstico'
+  IF NOT EXISTS estados_reparacion (
+    estado_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL
   );
 
 -- tabla Marcas
 CREATE TABLE
-  marcas (
-    marca_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nombre VARCHAR(50) UNIQUE NOT NULL, -- Ej: 'HP', 'Dell', 'Asus', 'Apple'
-    fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    fecha_modificacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  IF NOT EXISTS marcas (
+    marca_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL,
+    fecha_creacion TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    fecha_modificacion TEXT DEFAULT (DATETIME ('now', 'localtime'))
   );
 
--- Catálogo de Técnicos / Usuarios (Módulo de Seguridad Informática)
+-- Catálogo de Técnicos / Usuarios
 CREATE TABLE
-  tecnicos (
-    tecnico_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    identificacion VARCHAR(13) UNIQUE NOT NULL,
-    tipo_identificacion CHAR(1) NOT NULL,
-    nombres VARCHAR(100) NOT NULL,
-    apellidos VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    activo BOOLEAN DEFAULT TRUE,
-    fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    fecha_modificacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  IF NOT EXISTS tecnicos (
+    tecnico_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    identificacion TEXT UNIQUE NOT NULL,
+    tipo_identificacion TEXT CHECK (length (tipo_identificacion) <= 1) NOT NULL,
+    nombres TEXT NOT NULL,
+    apellidos TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    activo INTEGER DEFAULT 1,
+    fecha_creacion TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    fecha_modificacion TEXT DEFAULT (DATETIME ('now', 'localtime'))
   );
 
--- =============================================================================
--- 3. TABLAS PRINCIPALES DEL NEGOCIO (ENTIDADES)
--- =============================================================================
 -- Módulo de Registro de Clientes
 CREATE TABLE
-  clientes (
-    cliente_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    identificacion VARCHAR(13) UNIQUE NOT NULL,
-    tipo_identificacion CHAR(1) NOT NULL,
-    nombres VARCHAR(100) NOT NULL,
-    apellidos VARCHAR(100) NOT NULL,
-    telefono VARCHAR(20),
-    email VARCHAR(150) UNIQUE NOT NULL,
+  IF NOT EXISTS clientes (
+    cliente_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    identificacion TEXT UNIQUE NOT NULL,
+    tipo_identificacion TEXT CHECK (length (tipo_identificacion) <= 1) NOT NULL,
+    nombres TEXT NOT NULL,
+    apellidos TEXT NOT NULL,
+    telefono TEXT,
+    email TEXT UNIQUE NOT NULL,
     direccion TEXT,
-    fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    fecha_modificacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    fecha_creacion TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    fecha_modificacion TEXT DEFAULT (DATETIME ('now', 'localtime'))
   );
 
 -- Módulo de Registro de Equipos
 CREATE TABLE
-  equipos (
-    equipo_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    codigo VARCHAR(50) UNIQUE NOT NULL,
-    tipo_equipo VARCHAR(50) NOT NULL,
-    modelo VARCHAR(50),
-    numero_serie VARCHAR(100) UNIQUE,
+  IF NOT EXISTS equipos (
+    equipo_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo TEXT UNIQUE NOT NULL,
+    tipo_equipo TEXT NOT NULL,
+    modelo TEXT,
+    numero_serie TEXT UNIQUE,
     accesorios TEXT,
     descripcion_problema TEXT NOT NULL,
     observacion TEXT,
-    fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    fecha_modificacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    fecha_recepcion DATE,
-    fecha_estimada_entrega DATE,
-    marca_id INT NOT NULL,
-    cliente_id INT NOT NULL,
-    estado_id INT NOT NULL DEFAULT 1,
+    fecha_creacion TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    fecha_modificacion TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    fecha_recepcion TEXT,
+    fecha_estimada_entrega TEXT,
+    marca_id INTEGER NOT NULL,
+    cliente_id INTEGER NOT NULL,
+    estado_id INTEGER NOT NULL DEFAULT 1,
     CONSTRAINT fk_cliente FOREIGN KEY (cliente_id) REFERENCES clientes (cliente_id) ON DELETE RESTRICT,
     CONSTRAINT fk_marca FOREIGN KEY (marca_id) REFERENCES marcas (marca_id) ON DELETE RESTRICT,
     CONSTRAINT fk_estado_equipo FOREIGN KEY (estado_id) REFERENCES estados_reparacion (estado_id) ON DELETE RESTRICT
   );
 
--- =============================================================================
--- 4. TABLAS DE PROCESO (DETALLES, EXTENSIONES Y COBROS)
--- =============================================================================
--- Gestión de Abonos y Saldos del ingreso
+-- Gestión de Abonos y Saldos
 CREATE TABLE
-  cuentas_reparacion (
-    cuenta_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    costo_total NUMERIC(10, 2) DEFAULT 0.00,
-    abono NUMERIC(10, 2) DEFAULT 0.00, -- Abonos [
-    saldo NUMERIC(10, 2) GENERATED ALWAYS AS (costo_total - abono) STORED,
-    equipo_id INT UNIQUE NOT NULL,
+  IF NOT EXISTS cuentas_reparacion (
+    cuenta_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    costo_total REAL DEFAULT 0.00,
+    abono REAL DEFAULT 0.00,
+    saldo REAL GENERATED AS (costo_total - abono) STORED,
+    equipo_id INTEGER UNIQUE NOT NULL,
     CONSTRAINT fk_equipo_cuenta FOREIGN KEY (equipo_id) REFERENCES equipos (equipo_id) ON DELETE CASCADE
   );
 
 -- Módulo de Seguimiento de Reparación
 CREATE TABLE
-  historial_reparaciones (
-    historial_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  IF NOT EXISTS historial_reparaciones (
+    historial_id INTEGER PRIMARY KEY AUTOINCREMENT,
     observaciones_tecnicas TEXT,
-    fecha_cambio TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    tecnico_id INT,
-    equipo_id INT NOT NULL,
-    estado_id INT NOT NULL,
+    fecha_cambio TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    tecnico_id INTEGER,
+    equipo_id INTEGER NOT NULL,
+    estado_id INTEGER NOT NULL,
+    -- CORREGIDO: Se cambió 'fk_equipo_historial KEY' por 'FOREIGN KEY'
     CONSTRAINT fk_equipo_historial FOREIGN KEY (equipo_id) REFERENCES equipos (equipo_id) ON DELETE CASCADE,
     CONSTRAINT fk_estado_historial FOREIGN KEY (estado_id) REFERENCES estados_reparacion (estado_id) ON DELETE RESTRICT,
     CONSTRAINT fk_tecnico_historial FOREIGN KEY (tecnico_id) REFERENCES tecnicos (tecnico_id) ON DELETE SET NULL
   );
 
--- Módulo de Entrega de Equipos (Cierre del proceso)
+-- Módulo de Entrega de Equipos
 CREATE TABLE
-  entregas (
-    entrega_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fecha_entrega TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  IF NOT EXISTS entregas (
+    entrega_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha_entrega TEXT DEFAULT (DATETIME ('now', 'localtime')),
     trabajos_realizados TEXT NOT NULL,
-    estado_final_equipo VARCHAR(100) NOT NULL,
-    conformidad_cliente BOOLEAN DEFAULT TRUE,
-    comprobante_nro VARCHAR(50) UNIQUE,
-    equipo_id INT UNIQUE NOT NULL,
-    tecnico_id INT NOT NULL,
+    estado_final_equipo TEXT NOT NULL,
+    conformidad_cliente INTEGER DEFAULT 1,
+    comprobante_nro TEXT UNIQUE,
+    equipo_id INTEGER UNIQUE NOT NULL,
+    tecnico_id INTEGER NOT NULL,
     CONSTRAINT fk_equipo_entrega FOREIGN KEY (equipo_id) REFERENCES equipos (equipo_id) ON DELETE RESTRICT,
     CONSTRAINT fk_tecnico_entrega FOREIGN KEY (tecnico_id) REFERENCES tecnicos (tecnico_id) ON DELETE RESTRICT
   );
 
--- =============================================================================
--- 5. TABLAS DE AUDITORÍA Y SEGURIDAD (LOGS)
--- =============================================================================
--- Registro de Acciones Exitosas
+-- Registro de Acciones Exitosas (Auditoría)
 CREATE TABLE
-  log_ok (
-    log_ok_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fecha TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    modulo VARCHAR(50) NOT NULL,
-    accion VARCHAR(100) NOT NULL,
+  IF NOT EXISTS log_ok (
+    log_ok_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    modulo TEXT NOT NULL,
+    registro_id INTEGER,
+    accion TEXT NOT NULL,
     descripcion TEXT NOT NULL
   );
 
 -- Registro de Fallos y Errores de Backend
 CREATE TABLE
-  log_error (
-    log_error_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fecha TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    modulo VARCHAR(50) NOT NULL,
-    accion VARCHAR(100) NOT NULL,
+  IF NOT EXISTS log_error (
+    log_error_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    modulo TEXT NOT NULL,
     mensaje_error TEXT NOT NULL
   );
 
--- =============================================================================
--- 6. ÍNDICES PARA CONSULTAS Y REPORTES RÁPIDOS
--- =============================================================================
-CREATE INDEX idx_clientes_identificacion ON clientes (identificacion);
-
--- Buscar clientes
-CREATE INDEX idx_equipos_codigo ON equipos (codigo);
-
--- Buscar equipos por código
-CREATE INDEX idx_equipos_estado ON equipos (estado_id);
-
--- Listado de pendientes
-CREATE INDEX idx_log_ok_fecha ON log_ok (fecha);
-
-CREATE INDEX idx_log_error_fecha ON log_error (fecha);
+-- Índices optimizados
+CREATE INDEX IF NOT EXISTS idx_clientes_identificacion ON clientes (identificacion);
