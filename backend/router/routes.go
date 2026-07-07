@@ -31,7 +31,7 @@ func SetupRoutes(app *fiber.App) {
 	// clientes
 	v1.Get("/cliente", controllers.ObtenerClientes)
 	v1.Get("/cliente/:id", controllers.ObtenerCliente)
-	v1.Get("/cliente/:identificacion", controllers.ObtenerClientePorIdentificacion)
+	v1.Get("/cliente-dni/:identificacion", controllers.ObtenerClientePorIdentificacion)
 	v1.Post("/cliente", controllers.CrearCliente)
 	v1.Put("/cliente", controllers.ModificarCliente)
 	v1.Delete("/cliente/:id", controllers.EliminarCliente)
@@ -39,7 +39,7 @@ func SetupRoutes(app *fiber.App) {
 	// tecnicos
 	v1.Get("/tecnico", controllers.ObtenerTecnicos)
 	v1.Get("/tecnico/:id", controllers.ObtenerTecnico)
-	v1.Get("/tecnico/:identificacion", controllers.ObtenerTecnicoPorIdentificacion)
+	v1.Get("/tecnico-dni/:identificacion", controllers.ObtenerTecnicoPorIdentificacion)
 	v1.Post("/tecnico", controllers.CrearTecnico)
 	v1.Put("/tecnico", controllers.ModificarTecnico)
 	v1.Delete("/tecnico/:id", controllers.EliminarTecnico)

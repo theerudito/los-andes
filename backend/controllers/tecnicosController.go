@@ -8,7 +8,6 @@ import (
 	"los_andes/models"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -33,7 +32,7 @@ func ObtenerTecnicos(c *fiber.Ctx) error {
 			t.email,
 			t.activo,
 			t.fecha_creacion,
-			t.fecha_modificacion
+      t.fecha_modificacion
 		FROM 
 			tecnicos AS t
     ORDER BY 
@@ -95,7 +94,7 @@ func ObtenerTecnico(c *fiber.Ctx) error {
 			t.email,
 			t.activo,
 			t.fecha_creacion,
-			t.fecha_modificacion
+      t.fecha_modificacion
 		FROM 
 			tecnicos AS t
 		WHERE 
@@ -158,7 +157,7 @@ func ObtenerTecnicoPorIdentificacion(c *fiber.Ctx) error {
 			t.email,
 			t.activo,
 			t.fecha_creacion,
-			t.fecha_modificacion
+      t.fecha_modificacion
 		FROM 
 			tecnicos AS t
 		WHERE 
@@ -238,6 +237,8 @@ func CrearTecnico(c *fiber.Ctx) error {
 
 	passHash, err := helpers.EncriptarDato(tecnico.Password)
 
+	print(passHash)
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "tecnicos", "error incriptando el dato "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error incriptando el dato"})
@@ -254,8 +255,8 @@ func CrearTecnico(c *fiber.Ctx) error {
 			activo,
 			fecha_creacion,
 			fecha_modificacion
-		) VALUES ($1, $2, $3, $34, $5, $6, $7, $8, $9)
-		RETURNING marca_id`,
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING tecnico_id`,
 		tecnico.Identificacion,
 		helpers.TipoIdentificacion(tecnico.Identificacion),
 		strings.ToUpper(tecnico.Nombres),
@@ -263,8 +264,8 @@ func CrearTecnico(c *fiber.Ctx) error {
 		tecnico.Email,
 		passHash,
 		true,
-		time.Now(),
-		time.Now()).Scan(&TecnicoId)
+		helpers.FechaActual(),
+		helpers.FechaActual()).Scan(&TecnicoId)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "tecnicos", "error insertando el registro "+err.Error())
@@ -303,7 +304,7 @@ func ModificarTecnico(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT tecnico_id ROM tecnicos WHERE tecnico_id = $1`, tecnico.TecnicoId).Scan(&TecnicoId)
+	err = conn.QueryRow(`SELECT tecnico_id FROM tecnicos WHERE tecnico_id = $1`, tecnico.TecnicoId).Scan(&TecnicoId)
 
 	if err != nil {
 
@@ -341,7 +342,8 @@ func ModificarTecnico(c *fiber.Ctx) error {
 		strings.ToUpper(tecnico.Apellidos),
 		tecnico.Email,
 		true,
-		time.Now())
+		helpers.FechaActual(),
+		tecnico.TecnicoId)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "tecnicos", "error actualizando el registro "+err.Error())

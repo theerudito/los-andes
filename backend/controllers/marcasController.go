@@ -8,7 +8,6 @@ import (
 	"los_andes/models"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -27,8 +26,8 @@ func ObtenerMarcas(c *fiber.Ctx) error {
 		SELECT
 			m.marca_id,
 			m.nombre,
-			COALESCE(strftime('%d/%m/%Y', m.fecha_creacion), '') AS fecha_creacion,
-      COALESCE(strftime('%d/%m/%Y', m.fecha_modificacion), '') AS fecha_modificacion
+			m.fecha_creacion,
+      m.fecha_modificacion
 		FROM 
 			marcas AS m
     ORDER BY 
@@ -82,8 +81,8 @@ func ObtenerMarca(c *fiber.Ctx) error {
 		SELECT
 			m.marca_id,
 			m.nombre,
-			COALESCE(strftime('%d/%m/%Y', m.fecha_creacion), '') AS fecha_creacion,
-      COALESCE(strftime('%d/%m/%Y', m.fecha_modificacion), '') AS fecha_modificacion
+			m.fecha_creacion,
+      m.fecha_modificacion
 		FROM 
 			marcas AS m
 		WHERE 
@@ -164,8 +163,8 @@ func CrearMarca(c *fiber.Ctx) error {
 		) VALUES ($1, $2, $3)
 		RETURNING marca_id`,
 		strings.ToUpper(marca.Nombre),
-		time.Now(),
-		time.Now()).Scan(&MarcaId)
+		helpers.FechaActual(),
+		helpers.FechaActual()).Scan(&MarcaId)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error insertando el registro "+err.Error())
@@ -204,7 +203,7 @@ func ModificarMarca(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT marca_id ROM marcas WHERE marca_id = $1`, marca.MarcaId).Scan(&MarcaId)
+	err = conn.QueryRow(`SELECT marca_id FROM marcas WHERE marca_id = $1`, marca.MarcaId).Scan(&MarcaId)
 
 	if err != nil {
 
@@ -214,6 +213,10 @@ func ModificarMarca(c *fiber.Ctx) error {
 
 		_ = helpers.InsertLogsError(conn, "marcas", "error ejecutando la consulta "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
+	}
+
+	if MarcaId == 1 {
+		return c.Status(409).JSON(fiber.Map{"message": "no es posible borrar este registro"})
 	}
 
 	tx, err = conn.Begin()
@@ -232,7 +235,7 @@ func ModificarMarca(c *fiber.Ctx) error {
 		WHERE 
 			marca_id 				  		= $3`,
 		strings.ToUpper(marca.Nombre),
-		time.Now(),
+		helpers.FechaActual(),
 		marca.MarcaId)
 
 	if err != nil {
@@ -279,6 +282,10 @@ func EliminarMarca(c *fiber.Ctx) error {
 		_ = helpers.InsertLogsError(conn, "marcas", "error ejecutando la consulta "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
 
+	}
+
+	if MarcaId == 1 {
+		return c.Status(409).JSON(fiber.Map{"message": "no es posible borrar este registro"})
 	}
 
 	tx, err = conn.Begin()

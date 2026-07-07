@@ -1,11 +1,9 @@
 package models
 
-import "time"
-
 type HistorialReparaciones struct {
-	HistorialId           int       `json:"historial_id"`
-	ObservacionesTecnicas string    `json:"observaciones_tecnicas"`
-	FechaCambio           time.Time `json:"fecha_cambio"`
+	HistorialId           int    `json:"historial_id"`
+	ObservacionesTecnicas string `json:"observaciones_tecnicas"`
+	FechaCambio           string `json:"fecha_cambio"`
 
 	EquipoId  int `json:"equipo_id"`
 	TecnicoId int `json:"tecnico_id"`
@@ -13,9 +11,9 @@ type HistorialReparaciones struct {
 }
 
 type HistorialReparacionesDTO struct {
-	HistorialId           int       `json:"historial_id"`
-	ObservacionesTecnicas string    `json:"observaciones_tecnicas"`
-	FechaCambio           time.Time `json:"fecha_cambio"`
+	HistorialId           int    `json:"historial_id"`
+	ObservacionesTecnicas string `json:"observaciones_tecnicas"`
+	FechaCambio           string `json:"fecha_cambio"`
 
 	EquipoId int    `json:"equipo_id"`
 	Equipo   string `json:"equipo"`

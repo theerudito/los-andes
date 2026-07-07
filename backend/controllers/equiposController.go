@@ -8,7 +8,6 @@ import (
 	"los_andes/models"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -33,9 +32,9 @@ func ObtenerEquipos(c *fiber.Ctx) error {
 			e.descripcion_problema,
 			e.observacion,
 			e.fecha_recepcion,
-			e.fecha_estimada_entrega,
+      e.fecha_estimada_entrega,
 			e.fecha_creacion,
-			e.fecha_modificacion,
+      e.fecha_modificacion,
 			m.marca_id,
 			m.nombre AS marca,
 			c.cliente_id,
@@ -116,9 +115,9 @@ func ObtenerEquipo(c *fiber.Ctx) error {
 			e.descripcion_problema,
 			e.observacion,
 			e.fecha_recepcion,
-			e.fecha_estimada_entrega,
+      e.fecha_estimada_entrega,
 			e.fecha_creacion,
-			e.fecha_modificacion,
+      e.fecha_modificacion,
 			m.marca_id,
 			m.nombre AS marca,
 			c.cliente_id,
@@ -240,8 +239,8 @@ func CrearEquipo(c *fiber.Ctx) error {
 		strings.ToUpper(equipo.Observacion),
 		equipo.FechaRecepcion,
 		equipo.FechaEstimadaEntrega,
-		time.Now(),
-		time.Now(),
+		helpers.FechaActual(),
+		helpers.FechaActual(),
 		equipo.MarcaId,
 		equipo.ClienteId,
 		equipo.EstadoId).Scan(&EquipoId)
@@ -306,15 +305,15 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		UPDATE equipos 
 		SET codigo 							= $1,
 			tipo_equipo 					= $2,
-			modelo 							= $3,
+			modelo 							  = $3,
 			numero_serie 					= $4,
 			accesorios 						= $5,
-			descripcion_problema 			= $6,
+			descripcion_problema 	= $6,
 			observacion 					= $7,
-			fecha_recepcion 				= $8,
-			fecha_estimada_entrega 			= $9,
-			fecha_modificacion 				= $10,
-			marca_id 						= $11,
+			fecha_recepcion 			= $8,
+			fecha_estimada_entrega = $9,
+			fecha_modificacion 		= $10,
+			marca_id 						  = $11,
 			cliente_id 						= $12,
 			estado_id 						= $13
 		WHERE 
@@ -328,7 +327,7 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		strings.ToUpper(equipo.Observacion),
 		equipo.FechaRecepcion,
 		equipo.FechaEstimadaEntrega,
-		time.Now(),
+		helpers.FechaActual(),
 		equipo.MarcaId,
 		equipo.ClienteId,
 		equipo.EstadoId,

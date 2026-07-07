@@ -8,7 +8,6 @@ import (
 	"los_andes/models"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -97,7 +96,7 @@ func ObtenerCliente(c *fiber.Ctx) error {
 			c.email,
 			c.direccion,
 			c.fecha_creacion,
-			c.fecha_modificacion
+  		c.fecha_modificacion
 		FROM 
 			clientes AS c
 		WHERE 
@@ -162,7 +161,7 @@ func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
 			c.email,
 			c.direccion,
 			c.fecha_creacion,
-			c.fecha_modificacion
+  		c.fecha_modificacion
 		FROM 
 			clientes AS c
 		WHERE 
@@ -259,8 +258,8 @@ func CrearCliente(c *fiber.Ctx) error {
 		cliente.Telefono,
 		cliente.Email,
 		strings.ToUpper(cliente.Direccion),
-		time.Now(),
-		time.Now()).Scan(&ClienteId)
+		helpers.FechaActual(),
+		helpers.FechaActual()).Scan(&ClienteId)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error insertando el registro "+err.Error())
@@ -298,11 +297,12 @@ func ModificarCliente(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT cliente_id ROM clientes WHERE cliente_id = $1`, cliente.ClienteId).Scan(&ClienteId)
+	err = conn.QueryRow(`SELECT cliente_id FROM clientes WHERE cliente_id = $1`, cliente.ClienteId).Scan(&ClienteId)
 
 	if err != nil {
 
 		if errors.Is(err, sql.ErrNoRows) {
+			_ = helpers.InsertLogsError(conn, "cliente", err.Error())
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
 		}
 
@@ -331,13 +331,13 @@ func ModificarCliente(c *fiber.Ctx) error {
 			fecha_modificacion 		= $8
 		WHERE cliente_id 				= $9`,
 		cliente.Identificacion,
-		helpers.TipoIdentificacion(cliente.TipoIdentificacion),
+		helpers.TipoIdentificacion(cliente.Identificacion),
 		strings.ToUpper(cliente.Nombres),
 		strings.ToUpper(cliente.Apellidos),
 		cliente.Telefono,
 		cliente.Email,
 		strings.ToUpper(cliente.Direccion),
-		time.Now(),
+		helpers.FechaActual(),
 		cliente.ClienteId)
 
 	if err != nil {
@@ -371,17 +371,15 @@ func EliminarCliente(c *fiber.Ctx) error {
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM clientes WHERE cliente_id = $1`, id).Scan(&ClienteId)
+	err = conn.QueryRow(`SELECT cliente_id FROM clientes WHERE cliente_id = $1`, id).Scan(&ClienteId)
 
 	if err != nil {
-
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
 		}
 
 		_ = helpers.InsertLogsError(conn, "clientes", "error ejecutando la consulta "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
-
 	}
 
 	tx, err = conn.Begin()
