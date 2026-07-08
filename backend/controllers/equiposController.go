@@ -131,7 +131,7 @@ func ObtenerEquipo(c *fiber.Ctx) error {
 		INNER JOIN marcas m on e.marca_id = m.marca_id
 		INNER JOIN estados_reparacion r on e.estado_id = r.estado_id
 		WHERE 
-			e.equipo_id = $1`, id)
+			e.equipo_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "Error al ejecutar la consulta")
@@ -185,6 +185,7 @@ func CrearEquipo(c *fiber.Ctx) error {
 		err      error
 		equipo   models.EquiposDTO
 		tx       *sql.Tx
+		codigo   string
 	)
 
 	if err = c.BodyParser(&equipo); err != nil {
@@ -192,7 +193,7 @@ func CrearEquipo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE numero_serie = $1`, strings.ToUpper(equipo.NumeroSerie)).Scan(&exist)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE numero_serie = ?`, strings.ToUpper(equipo.NumeroSerie)).Scan(&exist)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error ejecutando la consulta "+err.Error())
@@ -212,25 +213,32 @@ func CrearEquipo(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
+	codigo, err = helpers.ObtenerCodigo(conn, "E")
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error obteniendo el codigo "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"messaje": "error obteniendo el codigo"})
+	}
+
 	err = tx.QueryRow(`
 		INSERT INTO equipos (
 			codigo,
 			tipo_equipo,
-		    modelo,
+		  modelo,
 			numero_serie,
-		    accesorios,
+		  accesorios,
 			descripcion_problema,
-		    observacion,
-			fecha_creacion,
-		    fecha_modificacion,
+		  observacion,
 			fecha_recepcion,
-		    fecha_estimada_entrega,
+		  fecha_estimada_entrega,
+			fecha_creacion,
+		  fecha_modificacion,
 			marca_id,
 			cliente_id,
-		    estado_id                 
-		) VALUES ($1, $2, $3,$4, $5, $6, $7, $8, $9 $10, $11, $12, $13, $14)
+		  estado_id                 
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING equipo_id`,
-		strings.ToUpper(equipo.Codigo),
+		codigo,
 		strings.ToUpper(equipo.TipoEquipo),
 		strings.ToUpper(equipo.Modelo),
 		equipo.NumeroSerie,
@@ -243,7 +251,7 @@ func CrearEquipo(c *fiber.Ctx) error {
 		helpers.FechaActual(),
 		equipo.MarcaId,
 		equipo.ClienteId,
-		equipo.EstadoId).Scan(&EquipoId)
+		1).Scan(&EquipoId)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error insertando el registro "+err.Error())
@@ -263,7 +271,14 @@ func CrearEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
+	err = helpers.ActualizarCodigo(conn, "E")
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error actualizando el codigo "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"messaje": "error actualizando el codigo"})
+	}
+
 	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente"})
+
 }
 
 func ModificarEquipo(c *fiber.Ctx) error {
@@ -280,7 +295,7 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT equipo_id FROM equipos WHERE equipo_id = $1`, equipo.EquipoId).Scan(&EquipoId)
+	err = conn.QueryRow(`SELECT equipo_id FROM equipos WHERE equipo_id = ?`, equipo.EquipoId).Scan(&EquipoId)
 
 	if err != nil {
 
@@ -303,22 +318,19 @@ func ModificarEquipo(c *fiber.Ctx) error {
 
 	_, err = tx.Exec(`
 		UPDATE equipos 
-		SET codigo 							= $1,
-			tipo_equipo 					= $2,
-			modelo 							  = $3,
-			numero_serie 					= $4,
-			accesorios 						= $5,
-			descripcion_problema 	= $6,
-			observacion 					= $7,
-			fecha_recepcion 			= $8,
-			fecha_estimada_entrega = $9,
-			fecha_modificacion 		= $10,
-			marca_id 						  = $11,
-			cliente_id 						= $12,
-			estado_id 						= $13
+		SET tipo_equipo 					= ?,
+			modelo 							  	= ?,
+			numero_serie 						= ?,
+			accesorios 							= ?,
+			descripcion_problema 		= ?,
+			observacion 						= ?,
+			fecha_recepcion 				= ?,
+			fecha_estimada_entrega  = ?,
+			fecha_modificacion 			= ?,
+			marca_id 						  	= ?,
+			cliente_id 							= ?
 		WHERE 
-			equipo_id 				  		= $14`,
-		strings.ToUpper(equipo.Codigo),
+			equipo_id 				  		= ?`,
 		strings.ToUpper(equipo.TipoEquipo),
 		strings.ToUpper(equipo.Modelo),
 		equipo.NumeroSerie,
@@ -330,7 +342,6 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		helpers.FechaActual(),
 		equipo.MarcaId,
 		equipo.ClienteId,
-		equipo.EstadoId,
 		equipo.EquipoId)
 
 	if err != nil {
@@ -345,7 +356,7 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
-	err = helpers.InsertLogs(conn, "UPDATE", "marcas", equipo.EquipoId, "registro actualizado correctamente")
+	err = helpers.InsertLogs(conn, "UPDATE", "equipos", equipo.EquipoId, "registro actualizado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
@@ -364,7 +375,7 @@ func EliminarEquipo(c *fiber.Ctx) error {
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE equipo_id = $1`, id).Scan(&EquipoId)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE equipo_id = ?`, id).Scan(&EquipoId)
 
 	if err != nil {
 
@@ -386,7 +397,7 @@ func EliminarEquipo(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`DELETE FROM equipos WHERE equipo_id = $1`, id)
+	_, err = tx.Exec(`DELETE FROM equipos WHERE equipo_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error eliminando el registro "+err.Error())

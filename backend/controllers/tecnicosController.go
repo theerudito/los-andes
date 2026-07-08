@@ -98,7 +98,7 @@ func ObtenerTecnico(c *fiber.Ctx) error {
 		FROM 
 			tecnicos AS t
 		WHERE 
-			t.tecnico_id = $1`, id)
+			t.tecnico_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "tecnicos", "Error al ejecutar la consulta")
@@ -161,7 +161,7 @@ func ObtenerTecnicoPorIdentificacion(c *fiber.Ctx) error {
 		FROM 
 			tecnicos AS t
 		WHERE 
-			t.identificacion = $1`, valor)
+			t.identificacion = ?`, valor)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "tecnicos", "Error al ejecutar la consulta")
@@ -215,7 +215,7 @@ func CrearTecnico(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM tecnicos WHERE identificacion = $1`, strings.ToUpper(tecnico.Identificacion)).Scan(&exist)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM tecnicos WHERE identificacion = ?`, strings.ToUpper(tecnico.Identificacion)).Scan(&exist)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "tecnicos", "error ejecutando la consulta "+err.Error())
@@ -255,7 +255,7 @@ func CrearTecnico(c *fiber.Ctx) error {
 			activo,
 			fecha_creacion,
 			fecha_modificacion
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING tecnico_id`,
 		tecnico.Identificacion,
 		helpers.TipoIdentificacion(tecnico.Identificacion),
@@ -304,7 +304,7 @@ func ModificarTecnico(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT tecnico_id FROM tecnicos WHERE tecnico_id = $1`, tecnico.TecnicoId).Scan(&TecnicoId)
+	err = conn.QueryRow(`SELECT tecnico_id FROM tecnicos WHERE tecnico_id = ?`, tecnico.TecnicoId).Scan(&TecnicoId)
 
 	if err != nil {
 
@@ -327,15 +327,15 @@ func ModificarTecnico(c *fiber.Ctx) error {
 
 	_, err = tx.Exec(`
 		UPDATE tecnicos 
-		SET identificacion 				= $1,
-			  tipo_identificacion 	= $2,
-				nombres 							= $3,
-				apellidos 						= $4,
-				email 								= $5,
-				activo 								= $6,
-				fecha_modificacion 		= $7
+		SET identificacion 				= ?,
+			  tipo_identificacion 	= ?,
+				nombres 							= ?,
+				apellidos 						= ?,
+				email 								= ?,
+				activo 								= ?,
+				fecha_modificacion 		= ?
 		WHERE 
-			tecnico_id 				  		= $8`,
+			tecnico_id 				  		= ?`,
 		tecnico.Identificacion,
 		helpers.TipoIdentificacion(tecnico.Identificacion),
 		strings.ToUpper(tecnico.Nombres),
@@ -379,7 +379,7 @@ func EliminarTecnico(c *fiber.Ctx) error {
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM tecnicos WHERE tecnico_id = $1`, id).Scan(&TecnicoId)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM tecnicos WHERE tecnico_id = ?`, id).Scan(&TecnicoId)
 
 	if err != nil {
 
@@ -401,7 +401,7 @@ func EliminarTecnico(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`DELETE FROM tecnicos WHERE tecnico_id = $1`, id)
+	_, err = tx.Exec(`DELETE FROM tecnicos WHERE tecnico_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "tecnicos", "error eliminando el registro "+err.Error())

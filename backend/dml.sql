@@ -1,40 +1,30 @@
--- =============================================================================
--- PROYECTO: GESTIÓN DE MANTENIMIENTO DE COMPUTADORAS (DATOS INICIALES)
--- BASE DE DATOS: SQLite
--- =============================================================================
--- Estados por defecto
 INSERT INTO
   estados_reparacion (nombre)
 VALUES
-  ('Recibido');
-
-INSERT INTO
-  estados_reparacion (nombre)
-VALUES
-  ('En diagnóstico');
-
-INSERT INTO
-  estados_reparacion (nombre)
-VALUES
-  ('En reparación');
-
-INSERT INTO
-  estados_reparacion (nombre)
-VALUES
-  ('Listo para entrega');
-
-INSERT INTO
-  estados_reparacion (nombre)
-VALUES
+  ('Recibido'),
+  ('En diagnóstico'),
+  ('En reparación'),
+  ('Listo para entrega'),
   ('Entregado');
 
--- Marcas iniciales
 INSERT INTO
-  marcas (nombre)
+  marcas (nombre, fecha_creacion, fecha_modificacion)
 VALUES
-  ('SIN MARCA');
+  (
+    'SIN MARCA',
+    '06/07/2026 20:05:56',
+    '06/07/2026 20:05:56'
+  );
 
 INSERT INTO
   config_inicial (inicializado)
 VALUES
   (1);
+
+INSERT INTO
+  secuencial (prefijo, digitos, inicio, actual)
+VALUES
+  ('C', 6, 1, 1),
+  ('E', 6, 1, 1),
+  ('T', 6, 1, 1),
+  ('O', 6, 1, 1);

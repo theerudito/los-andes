@@ -138,5 +138,15 @@ CREATE TABLE
     mensaje_error TEXT NOT NULL
   );
 
+-- secuencial
+CREATE TABLE
+  IF NOT EXISTS secuencial (
+    secuencial_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prefijo TEXT UNIQUE NOT NULL, -- Ej: 'C', 'E', 'T', 'O'
+    digitos INTEGER NOT NULL DEFAULT 6,
+    inicio INTEGER NOT NULL DEFAULT 1,
+    actual INTEGER NOT NULL DEFAULT 1
+  );
+
 -- Índices optimizados
 CREATE INDEX IF NOT EXISTS idx_clientes_identificacion ON clientes (identificacion);

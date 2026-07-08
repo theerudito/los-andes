@@ -86,7 +86,7 @@ func ObtenerMarca(c *fiber.Ctx) error {
 		FROM 
 			marcas AS m
 		WHERE 
-			m.marca_id = $1`, id)
+			m.marca_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "Error al ejecutar la consulta")
@@ -135,7 +135,7 @@ func CrearMarca(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM marcas WHERE nombre = $1`, strings.ToUpper(marca.Nombre)).Scan(&exist)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM marcas WHERE nombre = ?`, strings.ToUpper(marca.Nombre)).Scan(&exist)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error ejecutando la consulta "+err.Error())
@@ -160,7 +160,7 @@ func CrearMarca(c *fiber.Ctx) error {
 			nombre,
 			fecha_creacion,
 			fecha_modificacion
-		) VALUES ($1, $2, $3)
+		) VALUES (?, ?, ?)
 		RETURNING marca_id`,
 		strings.ToUpper(marca.Nombre),
 		helpers.FechaActual(),
@@ -203,7 +203,7 @@ func ModificarMarca(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT marca_id FROM marcas WHERE marca_id = $1`, marca.MarcaId).Scan(&MarcaId)
+	err = conn.QueryRow(`SELECT marca_id FROM marcas WHERE marca_id = ?`, marca.MarcaId).Scan(&MarcaId)
 
 	if err != nil {
 
@@ -230,10 +230,10 @@ func ModificarMarca(c *fiber.Ctx) error {
 
 	_, err = tx.Exec(`
 		UPDATE marcas 
-		SET nombre 							= $1,
-			fecha_modificacion 		= $2
+		SET nombre 							= ?,
+			fecha_modificacion 		= ?
 		WHERE 
-			marca_id 				  		= $3`,
+			marca_id 				  		= ?`,
 		strings.ToUpper(marca.Nombre),
 		helpers.FechaActual(),
 		marca.MarcaId)
@@ -271,7 +271,7 @@ func EliminarMarca(c *fiber.Ctx) error {
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM marcas WHERE marca_id = $1`, id).Scan(&MarcaId)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM marcas WHERE marca_id = ?`, id).Scan(&MarcaId)
 
 	if err != nil {
 
@@ -297,7 +297,7 @@ func EliminarMarca(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`DELETE FROM marcas WHERE marca_id = $1`, id)
+	_, err = tx.Exec(`DELETE FROM marcas WHERE marca_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error eliminando el registro "+err.Error())

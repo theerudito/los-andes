@@ -16,7 +16,6 @@ func ObtenerClientes(c *fiber.Ctx) error {
 
 	var (
 		clientes []models.Clientes
-		cliente  models.Clientes
 		conn     = database.GetDB()
 		rows     *sql.Rows
 		err      error
@@ -47,6 +46,9 @@ func ObtenerClientes(c *fiber.Ctx) error {
 	defer rows.Close()
 
 	for rows.Next() {
+
+		var cliente models.Clientes
+
 		err = rows.Scan(
 			&cliente.ClienteId,
 			&cliente.Identificacion,
@@ -100,7 +102,7 @@ func ObtenerCliente(c *fiber.Ctx) error {
 		FROM 
 			clientes AS c
 		WHERE 
-			c.cliente_id = $1`, id)
+			c.cliente_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
@@ -165,7 +167,7 @@ func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
 		FROM 
 			clientes AS c
 		WHERE 
-			c.identificacion = $1`, valor)
+			c.identificacion = ?`, valor)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
@@ -218,7 +220,7 @@ func CrearCliente(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM clientes WHERE identificacion = $1`, strings.ToUpper(cliente.Identificacion)).Scan(&exist)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM clientes WHERE identificacion = ?`, strings.ToUpper(cliente.Identificacion)).Scan(&exist)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error ejecutando la consulta "+err.Error())
@@ -249,7 +251,7 @@ func CrearCliente(c *fiber.Ctx) error {
 			direccion,
 			fecha_creacion,
 			fecha_modificacion
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING cliente_id`,
 		cliente.Identificacion,
 		helpers.TipoIdentificacion(cliente.TipoIdentificacion),
@@ -297,7 +299,7 @@ func ModificarCliente(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT cliente_id FROM clientes WHERE cliente_id = $1`, cliente.ClienteId).Scan(&ClienteId)
+	err = conn.QueryRow(`SELECT cliente_id FROM clientes WHERE cliente_id = ?`, cliente.ClienteId).Scan(&ClienteId)
 
 	if err != nil {
 
@@ -321,15 +323,15 @@ func ModificarCliente(c *fiber.Ctx) error {
 
 	_, err = tx.Exec(`
 		UPDATE clientes 
-		SET identificacion 			= $1,
-			tipo_identificacion 	= $2,
-			nombres 							= $3,
-			apellidos 						= $4,
-			telefono 							= $5,
-			email 								= $6,
-			direccion 						= $7,
-			fecha_modificacion 		= $8
-		WHERE cliente_id 				= $9`,
+		SET identificacion 			= ?,
+			tipo_identificacion 	= ?,
+			nombres 							= ?,
+			apellidos 						= ?,
+			telefono 							= ?,
+			email 								= ?,
+			direccion 						= ?,
+			fecha_modificacion 		= ?
+		WHERE cliente_id 				= ?`,
 		cliente.Identificacion,
 		helpers.TipoIdentificacion(cliente.Identificacion),
 		strings.ToUpper(cliente.Nombres),
@@ -371,7 +373,7 @@ func EliminarCliente(c *fiber.Ctx) error {
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	err = conn.QueryRow(`SELECT cliente_id FROM clientes WHERE cliente_id = $1`, id).Scan(&ClienteId)
+	err = conn.QueryRow(`SELECT cliente_id FROM clientes WHERE cliente_id = ?`, id).Scan(&ClienteId)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -391,7 +393,7 @@ func EliminarCliente(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`DELETE FROM clientes WHERE cliente_id = $1`, id)
+	_, err = tx.Exec(`DELETE FROM clientes WHERE cliente_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error eliminando el registro "+err.Error())

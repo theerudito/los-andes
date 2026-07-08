@@ -73,7 +73,7 @@ func ObtenerEstado(c *fiber.Ctx) error {
 		FROM 
 			estados_reparacion AS e
 		WHERE 
-			e.estado_id = $1`, id)
+			e.estado_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "estados_reparacion", "Error al ejecutar la consulta")

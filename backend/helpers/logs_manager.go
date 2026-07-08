@@ -2,8 +2,9 @@ package helpers
 
 func InsertLogsError(exec ExecutorDB, tableName string, message string) error {
 	query := `
-        INSERT INTO logs_error (table_name, message)
-        VALUES ($1, $2)`
+        INSERT INTO log_error (modulo, mensaje_error)
+        VALUES (?, ?)`
+
 	_, err := exec.Exec(query, tableName, message)
 	return err
 }
