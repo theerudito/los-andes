@@ -3,6 +3,7 @@ package controllers
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"los_andes/database"
 	"los_andes/helpers"
 	"los_andes/models"
@@ -183,16 +184,18 @@ func CrearEquipo(c *fiber.Ctx) error {
 		conn     = database.GetDB()
 		exist    int
 		err      error
-		equipo   models.EquiposDTO
+		equipo   models.Equipos
 		tx       *sql.Tx
 		codigo   string
 	)
 
+	// 1. Validar el cuerpo de la solicitud
 	if err = c.BodyParser(&equipo); err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
+	// 2. Verificar duplicados por número de serie
 	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE numero_serie = ?`, strings.ToUpper(equipo.NumeroSerie)).Scan(&exist)
 
 	if err != nil {
@@ -204,6 +207,7 @@ func CrearEquipo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "el registro ya existe"})
 	}
 
+	// 3. Iniciar la transacción
 	tx, err = conn.Begin()
 
 	if err != nil {
@@ -211,8 +215,10 @@ func CrearEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
 	}
 
+	// En caso de cualquier error intermedio, se deshacen todos los cambios de la transacción
 	defer tx.Rollback()
 
+	// 4. Obtener el secuencial para el código del equipo
 	codigo, err = helpers.ObtenerCodigo(conn, "E")
 
 	if err != nil {
@@ -220,28 +226,29 @@ func CrearEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error obteniendo el codigo"})
 	}
 
+	// 5. Insertar en la tabla 'equipos' y obtener el ID generado
 	err = tx.QueryRow(`
-		INSERT INTO equipos (
-			codigo,
-			tipo_equipo,
-		  modelo,
-			numero_serie,
-		  accesorios,
-			descripcion_problema,
-		  observacion,
-			fecha_recepcion,
-		  fecha_estimada_entrega,
-			fecha_creacion,
-		  fecha_modificacion,
-			marca_id,
-			cliente_id,
-		  estado_id                 
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		RETURNING equipo_id`,
+    INSERT INTO equipos (
+      codigo,
+      tipo_equipo,
+      modelo,
+      numero_serie,
+      accesorios,
+      descripcion_problema,
+      observacion,
+      fecha_recepcion,
+      fecha_estimada_entrega,
+      fecha_creacion,
+      fecha_modificacion,
+      marca_id,
+      cliente_id,
+      estado_id                 
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    RETURNING equipo_id`,
 		codigo,
 		strings.ToUpper(equipo.TipoEquipo),
 		strings.ToUpper(equipo.Modelo),
-		equipo.NumeroSerie,
+		strings.ToUpper(equipo.NumeroSerie),
 		strings.ToUpper(equipo.Accesorios),
 		strings.ToUpper(equipo.Descripcion),
 		strings.ToUpper(equipo.Observacion),
@@ -258,6 +265,45 @@ func CrearEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando el registro"})
 	}
 
+	// 6. Insertar el hito inicial en 'historial_reparaciones'
+	_, err = tx.Exec(`
+    INSERT INTO historial_reparaciones (
+      observaciones_tecnicas,
+      fecha,
+      tecnico_id,
+      equipo_id,
+      estado_id
+    ) VALUES (?, ?, ?, ?, ?)`,
+		"INGRESO INICIAL: "+strings.ToUpper(equipo.Descripcion),
+		helpers.FechaActual(),
+		equipo.TecnicoId,
+		EquipoId,
+		1,
+	)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error insertando historial inicial "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"messaje": "error registrando historial de ingreso"})
+	}
+
+	// 7. Inicializar la billetera/cuenta en 'cuentas_reparacion'
+	_, err = tx.Exec(`
+    INSERT INTO cuentas_reparacion (
+      costo_total,
+      abono,
+      equipo_id
+    ) VALUES (?, ?, ?)`,
+		0.00,
+		0.00,
+		EquipoId,
+	)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error inicializando cuenta "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"messaje": "error inicializando cuenta de cobro"})
+	}
+
+	// 8. Confirmar la transacción en la Base de Datos si todo salió bien
 	err = tx.Commit()
 
 	if err != nil {
@@ -265,20 +311,26 @@ func CrearEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
+	// 9. Auditoría externa a la transacción (Log OK)
 	err = helpers.InsertLogs(conn, "INSERT", "equipos", EquipoId, "registro creado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
+	// 10. Actualizar el contador secuencial para el siguiente código de equipo
 	err = helpers.ActualizarCodigo(conn, "E")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error actualizando el codigo "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error actualizando el codigo"})
 	}
 
-	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente"})
-
+	// Respuesta exitosa al Frontend
+	return c.Status(201).JSON(fiber.Map{
+		"message":   "registro creado correctamente",
+		"equipo_id": EquipoId,
+		"codigo":    codigo,
+	})
 }
 
 func ModificarEquipo(c *fiber.Ctx) error {
@@ -290,50 +342,63 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		tx       *sql.Tx
 	)
 
+	// 1. Validar el cuerpo de la solicitud
 	if err = c.BodyParser(&equipo); err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
+	// 2. Validar si el equipo existe en la base de datos
 	err = conn.QueryRow(`SELECT equipo_id FROM equipos WHERE equipo_id = ?`, equipo.EquipoId).Scan(&EquipoId)
-
 	if err != nil {
-
 		if errors.Is(err, sql.ErrNoRows) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El registro no existe"})
 		}
-
 		_ = helpers.InsertLogsError(conn, "equipos", "error ejecutando la consulta "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
 	}
 
-	tx, err = conn.Begin()
+	// 3. CANDADO DE SEGURIDAD: Validar si el equipo ya fue entregado formalmente
+	var tieneEntrega int
+	err = conn.QueryRow(`SELECT COUNT(*) FROM entregas WHERE equipo_id = ?`, equipo.EquipoId).Scan(&tieneEntrega)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error verificando entrega "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el estado de entrega"})
+	}
 
+	if tieneEntrega > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "No se puede modificar este equipo porque ya cuenta con un acta de entrega formal (Caso Cerrado)",
+		})
+	}
+
+	// 4. Iniciar Transacción
+	tx, err = conn.Begin()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error iniciando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
 	}
-
 	defer tx.Rollback()
 
+	// 5. Actualizar datos informativos del equipo (No altera el estado_id)
 	_, err = tx.Exec(`
-		UPDATE equipos 
-		SET tipo_equipo 					= ?,
-			modelo 							  	= ?,
-			numero_serie 						= ?,
-			accesorios 							= ?,
-			descripcion_problema 		= ?,
-			observacion 						= ?,
-			fecha_recepcion 				= ?,
-			fecha_estimada_entrega  = ?,
-			fecha_modificacion 			= ?,
-			marca_id 						  	= ?,
-			cliente_id 							= ?
-		WHERE 
-			equipo_id 				  		= ?`,
+    UPDATE equipos 
+    SET tipo_equipo           = ?,
+      modelo                  = ?,
+      numero_serie            = ?,
+      accesorios              = ?,
+      descripcion_problema    = ?,
+      observacion             = ?,
+      fecha_recepcion         = ?,
+      fecha_estimada_entrega  = ?,
+      fecha_modificacion      = ?,
+      marca_id                = ?,
+      cliente_id              = ?
+    WHERE 
+      equipo_id               = ?`,
 		strings.ToUpper(equipo.TipoEquipo),
 		strings.ToUpper(equipo.Modelo),
-		equipo.NumeroSerie,
+		strings.ToUpper(equipo.NumeroSerie),
 		strings.ToUpper(equipo.Accesorios),
 		strings.ToUpper(equipo.Descripcion),
 		strings.ToUpper(equipo.Observacion),
@@ -349,73 +414,119 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error actualizando el registro"})
 	}
 
+	// 6. Confirmar cambios
 	err = tx.Commit()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error confirmando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
+	// 7. Auditoría de acción exitosa
 	err = helpers.InsertLogs(conn, "UPDATE", "equipos", equipo.EquipoId, "registro actualizado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
-	return c.Status(201).JSON(fiber.Map{"message": "registro actualizado correctamente"})
+	return c.Status(200).JSON(fiber.Map{"message": "registro actualizado correctamente"})
 }
 
 func EliminarEquipo(c *fiber.Ctx) error {
 	var (
-		EquipoId int
-		conn     = database.GetDB()
-		err      error
-		tx       *sql.Tx
+		exist        int
+		estadoId     int
+		abono        float64
+		conn         = database.GetDB()
+		err          error
+		tx           *sql.Tx
+		codigoEquipo string
 	)
 
-	id, _ := strconv.Atoi(c.Params("id"))
-
-	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE equipo_id = ?`, id).Scan(&EquipoId)
-
+	// 1. Obtener y validar el ID de los parámetros de la URL
+	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
-		}
-
-		_ = helpers.InsertLogsError(conn, "equipos", "error ejecutando la consulta "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
-
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID inválido"})
 	}
 
-	tx, err = conn.Begin()
+	// 2. Validar si el equipo existe y obtener su código y estado actual
+	err = conn.QueryRow(`
+    SELECT COUNT(*), COALESCE(codigo, ''), estado_id 
+    FROM equipos 
+    WHERE equipo_id = ?`, id).Scan(&exist, &codigoEquipo, &estadoId)
 
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error ejecutando la consulta "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
+	}
+
+	if exist == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "el registro no existe"})
+	}
+
+	// =========================================================================
+	// ESCUDO 1: CANDADO POR ESTADO (Regla de Negocio)
+	// Bloquea el borrado si el equipo ya está en su fase final
+	// =========================================================================
+	if estadoId == 6 || estadoId == 7 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "No se puede eliminar el equipo porque se encuentra en un estado finalizado (Entregado/Cancelado)",
+		})
+	}
+
+	// =========================================================================
+	// ESCUDO 2: CANDADO DE CAJA ANTI-FRAUDE / ANTI-ERROR
+	// Bloquea el borrado si el cliente ya dejó dinero abonado (así esté en estado 1)
+	// =========================================================================
+	err = conn.QueryRow(`SELECT abono FROM cuentas_reparacion WHERE equipo_id = ?`, id).Scan(&abono)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error consultando abonos "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al verificar la cuenta financiera"})
+	}
+
+	if abono > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": fmt.Sprintf("No se puede eliminar el equipo porque registra un abono de $%.2f en caja. Primero debe devolver o reversar el dinero.", abono),
+		})
+	}
+
+	// =========================================================================
+	// 3. Iniciar Transacción Atómica (Solo si pasó los dos candados de arriba)
+	// =========================================================================
+	tx, err = conn.Begin()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error iniciando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
 	}
-
 	defer tx.Rollback()
 
+	// 4. Romper el RESTRICT de la base de datos eliminando primero la entrega si existiera
+	_, err = tx.Exec(`DELETE FROM entregas WHERE equipo_id = ?`, id)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error eliminando entrega asociada "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al procesar la eliminación de entregas"})
+	}
+
+	// 5. Eliminar el equipo principal (ON DELETE CASCADE limpia historial y cuenta con abono en 0.00)
 	_, err = tx.Exec(`DELETE FROM equipos WHERE equipo_id = ?`, id)
-
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error eliminando el registro "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error eliminando el registro"})
+		_ = helpers.InsertLogsError(conn, "equipos", "error deleting el equipo "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al eliminar el registro central"})
 	}
 
-	err = helpers.InsertLogs(tx, "DELETE", "equipos", id, "registro eliminado correctamente")
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
-	}
-
+	// 6. Confirmar la transacción en bloque
 	err = tx.Commit()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error confirmando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
-	return c.Status(200).JSON(fiber.Map{"message": "registro eliminado correctamente"})
+	// 7. Auditoría de eliminación completa en log_ok
+	descripcionLog := "Eliminación total del equipo " + codigoEquipo + " (Sin abonos pendientes y en fase operativa)"
+	err = helpers.InsertLogs(conn, "DELETE", "equipos", id, descripcionLog)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error insertando la auditoria "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+	}
+
+	return c.Status(200).JSON(fiber.Map{"message": "Equipo y todo su historial eliminados correctamente"})
 }

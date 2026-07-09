@@ -93,17 +93,16 @@ CREATE TABLE
   IF NOT EXISTS historial_reparaciones (
     historial_id INTEGER PRIMARY KEY AUTOINCREMENT,
     observaciones_tecnicas TEXT,
-    fecha_cambio TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    fecha TEXT DEFAULT (DATETIME ('now', 'localtime')),
     tecnico_id INTEGER,
     equipo_id INTEGER NOT NULL,
     estado_id INTEGER NOT NULL,
-    -- CORREGIDO: Se cambió 'fk_equipo_historial KEY' por 'FOREIGN KEY'
     CONSTRAINT fk_equipo_historial FOREIGN KEY (equipo_id) REFERENCES equipos (equipo_id) ON DELETE CASCADE,
     CONSTRAINT fk_estado_historial FOREIGN KEY (estado_id) REFERENCES estados_reparacion (estado_id) ON DELETE RESTRICT,
     CONSTRAINT fk_tecnico_historial FOREIGN KEY (tecnico_id) REFERENCES tecnicos (tecnico_id) ON DELETE SET NULL
   );
 
--- Módulo de Entrega de Equipos
+-- Módulo de Entrega de Equiposd
 CREATE TABLE
   IF NOT EXISTS entregas (
     entrega_id INTEGER PRIMARY KEY AUTOINCREMENT,

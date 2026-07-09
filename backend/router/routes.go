@@ -62,11 +62,16 @@ func SetupRoutes(app *fiber.App) {
 	v1.Put("/equipo", controllers.ModificarEquipo)
 	v1.Delete("/equipo/:id", controllers.EliminarEquipo)
 
+	// historial
+	v1.Get("/historial/:id", controllers.ConsultarHistorialEquipo)
+	v1.Put("/historial", controllers.ActualizarEstadoEquipo)
+
+	// pagos
+	v1.Get("/pago/:id", controllers.ConsultarCuentaEquipo)
+	v1.Put("/pago", controllers.ActualizarCuentaEquipo)
+
 	// entregas
-	v1.Get("/entrega", controllers.ObtenerEntregas)
-	v1.Get("/entrega/:id", controllers.ObtenerEntrega)
-	v1.Post("/entrega", controllers.CrearEntrega)
-	v1.Put("/entrega", controllers.ModificarEntrega)
-	v1.Delete("/entrega/:id", controllers.EliminarEntrega)
+	v1.Get("/entrega/:id", controllers.ConsultarEntregaPorEquipo)
+	v1.Post("/entrega", controllers.RegistrarEntrega)
 
 }

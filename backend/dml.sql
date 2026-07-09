@@ -3,9 +3,11 @@ INSERT INTO
 VALUES
   ('Recibido'),
   ('En diagnóstico'),
+  ('Esperando repuestos'),
   ('En reparación'),
   ('Listo para entrega'),
-  ('Entregado');
+  ('Entregado'),
+  ('Cancelado');
 
 INSERT INTO
   marcas (nombre, fecha_creacion, fecha_modificacion)
