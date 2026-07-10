@@ -17,7 +17,7 @@ type Equipos struct {
 	MarcaId   int `json:"marca_id"`
 	ClienteId int `json:"cliente_id"`
 	EstadoId  int `json:"estado_id"`
-	TecnicoId int `json:"tecnico_id"`
+	UsuarioId int `json:"usuario_id"`
 }
 
 type EquiposDTO struct {

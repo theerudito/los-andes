@@ -20,7 +20,6 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID de equipo inválido"})
 	}
 
-	// Verificar primero si el equipo existe en la base de datos
 	var exist int
 	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE equipo_id = ?`, id).Scan(&exist)
 	if err != nil {
@@ -31,17 +30,16 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "el equipo no existe"})
 	}
 
-	// Consulta que une las tablas de estados y técnicos para devolver nombres legibles al frontend
 	rows, err := conn.Query(`
     SELECT 
       h.historial_id,
       h.observaciones_tecnicas,
       h.fecha,
       e.nombre AS estado_nombre,
-      COALESCE(t.nombres || ' ' || t.apellidos, 'SISTEMA / NO ASIGNADO') AS tecnico_nombre
+      COALESCE(u.nombres || ' ' || u.apellidos, '') AS nombres
     FROM historial_reparaciones h
     INNER JOIN estados_reparacion e ON h.estado_id = e.estado_id
-    LEFT JOIN tecnicos t ON h.tecnico_id = t.tecnico_id
+    LEFT JOIN usuarios u ON h.usuario_id = u.usuario_id
     WHERE h.equipo_id = ?
     ORDER BY h.fecha DESC`, id)
 
@@ -56,7 +54,7 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 		ObservacionesTecnicas string `json:"observaciones_tecnicas"`
 		FechaCambio           string `json:"fecha_cambio"`
 		EstadoNombre          string `json:"estado_nombre"`
-		TecnicoNombre         string `json:"tecnico_nombre"`
+		TecnicoNombre         string `json:"nombres"`
 	}
 
 	var listaHistorial []HistorialResponse = []HistorialResponse{}
@@ -81,7 +79,7 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	var req struct {
 		EquipoId              int    `json:"equipo_id"`
 		EstadoId              int    `json:"estado_id"`
-		TecnicoId             *int   `json:"tecnico_id"`
+		UsuarioId             int    `json:"usuario_id"` // ID del usuario logueado en la sesión
 		ObservacionesTecnicas string `json:"observaciones_tecnicas"`
 	}
 
@@ -90,9 +88,27 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	// 1. Obtener el estado_id ACTUAL del equipo
+	// 1. Obtener el Rol del Usuario
+	var rolUsuario string
+	err := conn.QueryRow(`
+		SELECT r.nombre 
+		FROM usuarios u
+		INNER JOIN roles r ON u.rol_id = r.rol_id
+		WHERE u.usuario_id = ? AND u.activo = 1`,
+		req.UsuarioId,
+	).Scan(&rolUsuario)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Usuario no autorizado o inexistente"})
+		}
+		_ = helpers.InsertLogsError(conn, "historial", "error consultando rol "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al verificar permisos del usuario"})
+	}
+
+	// 2. Obtener el estado_id ACTUAL del equipo
 	var estadoActualId int
-	err := conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, req.EquipoId).Scan(&estadoActualId)
+	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, req.EquipoId).Scan(&estadoActualId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El equipo no existe"})
@@ -101,99 +117,140 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el estado del equipo"})
 	}
 
-	// 2. ESCUDO 1: Bloqueo si ya está en un estado final
+	// ==========================================
+	//  RESTRICCIONES DE CONTROL DE ACCESO (ROLES)
+	// ==========================================
+	switch rolUsuario {
+	case "TECNICO":
+		// El técnico solo opera en estados de taller (1 al 5)
+		if req.EstadoId >= 6 {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"message": "Permiso denegado. Como Técnico no estás autorizado para Entregar (6) o Cancelar (7) equipos.",
+			})
+		}
+
+	case "VENDEDOR":
+		// El vendedor solo realiza transacciones de salida (6 o 7)
+		if req.EstadoId < 6 {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"message": "Permiso denegado. El perfil de Vendedor solo puede procesar Entregas (6) o Cancelaciones (7).",
+			})
+		}
+
+	case "ADMINISTRADOR":
+		// Acceso total a cualquier estado
+
+	default:
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Rol de usuario no reconocido"})
+	}
+
+	// ==========================================
+	//  REGLAS DE NEGOCIO (ESTADOS Y SALDOS)
+	// ==========================================
+
+	// Evitar modificar equipos que ya fueron entregados o cancelados definitivamente
 	if estadoActualId == 6 || estadoActualId == 7 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "No se puede cambiar el estado de este equipo porque ya se encuentra finalizado (Entregado/Cancelado)",
+			"message": "No se puede modificar el estado del equipo porque ya se encuentra en un estado final (Entregado/Cancelado).",
 		})
 	}
 
-	// 3. ESCUDO 2: CONTROL DE FLUJO ASCENDENTE
-	if req.EstadoId <= estadoActualId {
+	// Evitar retrocesos al estado 'Recibido' (1)
+	if estadoActualId > 1 && req.EstadoId == 1 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": fmt.Sprintf("Flujo de proceso inválido. No puedes cambiar a un estado menor o igual al actual."),
+			"message": "Operación inválida. Un equipo en revisión no puede regresar al estado 'Recibido'.",
 		})
 	}
 
-	// 4. ESCUDO 3: Validación para pasar a ENTREGADO
+	// BLOQUEO: Para pasar a "Entregado (6)" se DEBE usar el otro endpoint específico
 	if req.EstadoId == 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Para entregar el equipo debe usar el proceso de facturación/entregas para generar el acta obligatoria.",
+		})
+	}
+
+	// Validación financiera obligatoria para pasar a CANCELADO (7) (Cobro de diagnóstico)
+	if req.EstadoId == 7 {
 		var saldo float64
 		err = conn.QueryRow(`SELECT saldo FROM cuentas_reparacion WHERE equipo_id = ?`, req.EquipoId).Scan(&saldo)
 		if err != nil {
-			_ = helpers.InsertLogsError(conn, "historial", "error consultando saldo "+err.Error())
-			return c.Status(500).JSON(fiber.Map{"message": "error al verificar saldo financiero"})
+			_ = helpers.InsertLogsError(conn, "historial", "error consultando saldo para cancelar "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error al verificar saldo de cuenta"})
 		}
 		if saldo > 0 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"message": fmt.Sprintf("No se puede pasar a estado Entregado. La cuenta registra un saldo pendiente de: $%.2f", saldo),
+				"message": fmt.Sprintf("No se puede cancelar el equipo. Registra un cobro de diagnóstico pendiente: $%.2f", saldo),
 			})
 		}
 	}
 
-	// 5. Iniciar Transacción Atómica
+	// Evitar el reenvío redundante del mismo estado actual
+	if req.EstadoId == estadoActualId {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "El equipo ya se encuentra en el estado solicitado.",
+		})
+	}
+
+	// 3. Ejecución en Transacción Atómica
 	tx, err = conn.Begin()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "historial", "error iniciando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error iniciando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error de base de datos"})
 	}
-	// Defer de seguridad por si el sistema llega a tirar un panic inesperado
 	defer tx.Rollback()
 
 	fechaActual := helpers.FechaActual()
 
-	// 6. PASO A: Actualizar el estado_id en la tabla 'equipos'
+	// Actualizar el estado principal del equipo
 	_, err = tx.Exec(`
-    UPDATE equipos 
-    SET estado_id = ?, 
-        fecha_modificacion = ? 
-    WHERE equipo_id = ?`,
+		UPDATE equipos 
+		SET estado_id = ?, 
+		    fecha_modificacion = ? 
+		WHERE equipo_id = ?`,
 		req.EstadoId,
 		fechaActual,
 		req.EquipoId,
 	)
 	if err != nil {
-		_ = tx.Rollback() // <-- Liberamos la base de datos INMEDIATAMENTE
-		_ = helpers.InsertLogsError(conn, "historial", "error actualizando tabla equipos "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar el estado del equipo"})
+		_ = tx.Rollback()
+		_ = helpers.InsertLogsError(conn, "historial", "error actualizando equipos "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar estado del equipo"})
 	}
 
-	// 7. PASO B: Insertar el registro en 'historial_reparaciones'
+	// Insertar el hito de cambio en 'historial_reparaciones'
 	_, err = tx.Exec(`
-    INSERT INTO historial_reparaciones (
-      observaciones_tecnicas,
-      fecha,                  
-      tecnico_id,
-      equipo_id,
-      estado_id
-    ) VALUES (?, ?, ?, ?, ?)`,
+		INSERT INTO historial_reparaciones (
+			observaciones_tecnicas,
+			fecha,                  
+			usuario_id,
+			equipo_id,
+			estado_id
+		) VALUES (?, ?, ?, ?, ?)`,
 		strings.ToUpper(req.ObservacionesTecnicas),
 		fechaActual,
-		req.TecnicoId,
+		req.UsuarioId,
 		req.EquipoId,
 		req.EstadoId,
 	)
 	if err != nil {
 		stringError := err.Error()
-		_ = tx.Rollback() // <-- IMPORTANTE: Romper la transacción AQUÍ antes de llamar al log externo
-
-		// Ahora que la BD está libre, el log se va a guardar sí o sí
-		_ = helpers.InsertLogsError(conn, "historial", "error insertando hito de historial: "+stringError)
-
+		_ = tx.Rollback()
+		_ = helpers.InsertLogsError(conn, "historial", "error insertando historial: "+stringError)
 		return c.Status(500).JSON(fiber.Map{
-			"message": "error al registrar en el historial",
-			"debug":   stringError, // Te lo devuelvo en el JSON temporalmente para que veas qué restricción saltó
+			"message": "error al guardar el historial técnico",
+			"debug":   stringError,
 		})
 	}
 
-	// 8. Confirmar transacción
+	// Confirmar cambios
 	err = tx.Commit()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "historial", "error confirmando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error confirmando cambios"})
+		return c.Status(500).JSON(fiber.Map{"message": "error al procesar los cambios"})
 	}
 
-	// 9. Registrar Log de Éxito
-	_ = helpers.InsertLogs(conn, "UPDATE/INSERT", "historial_reparaciones", req.EquipoId, "Cambio de estado procesado correctamente")
+	// Registrar Log de Éxito
+	_ = helpers.InsertLogs(conn, "UPDATE/INSERT", "historial_reparaciones", req.EquipoId, "Cambio de estado procesado por el rol: "+rolUsuario)
 
 	return c.Status(200).JSON(fiber.Map{"message": "Estado del equipo actualizado correctamente"})
 }

@@ -36,13 +36,13 @@ func SetupRoutes(app *fiber.App) {
 	v1.Put("/cliente", controllers.ModificarCliente)
 	v1.Delete("/cliente/:id", controllers.EliminarCliente)
 
-	// tecnicos
-	v1.Get("/tecnico", controllers.ObtenerTecnicos)
-	v1.Get("/tecnico/:id", controllers.ObtenerTecnico)
-	v1.Get("/tecnico-dni/:identificacion", controllers.ObtenerTecnicoPorIdentificacion)
-	v1.Post("/tecnico", controllers.CrearTecnico)
-	v1.Put("/tecnico", controllers.ModificarTecnico)
-	v1.Delete("/tecnico/:id", controllers.EliminarTecnico)
+	// usuarios
+	v1.Get("/usuario", controllers.ObtenerUsuarios)
+	v1.Get("/usuario/:id", controllers.ObtenerUsuario)
+	v1.Get("/usuario-dni/:identificacion", controllers.ObtenerUsuarioPorIdentificacion)
+	v1.Post("/usuario", controllers.CrearUsuario)
+	v1.Put("/usuario", controllers.ModificarUsuario)
+	v1.Delete("/usuario/:id", controllers.EliminarUsuario)
 
 	// marca
 	v1.Get("/marca", controllers.ObtenerMarcas)
@@ -58,6 +58,7 @@ func SetupRoutes(app *fiber.App) {
 	// equipos
 	v1.Get("/equipo", controllers.ObtenerEquipos)
 	v1.Get("/equipo/:id", controllers.ObtenerEquipo)
+	v1.Get("/equipo/:tipo/:valor", controllers.ObtenerEquipoPorTipo)
 	v1.Post("/equipo", controllers.CrearEquipo)
 	v1.Put("/equipo", controllers.ModificarEquipo)
 	v1.Delete("/equipo/:id", controllers.EliminarEquipo)

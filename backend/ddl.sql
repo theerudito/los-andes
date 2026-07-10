@@ -15,6 +15,12 @@ CREATE TABLE
     nombre TEXT UNIQUE NOT NULL
   );
 
+CREATE TABLE
+  IF NOT EXISTS roles (
+    rol_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL -- 'ADMINISTRADOR', 'TECNICO', 'VENDEDOR'
+  );
+
 -- tabla Marcas
 CREATE TABLE
   IF NOT EXISTS marcas (
@@ -26,8 +32,8 @@ CREATE TABLE
 
 -- Catálogo de Técnicos / Usuarios
 CREATE TABLE
-  IF NOT EXISTS tecnicos (
-    tecnico_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  IF NOT EXISTS usuarios (
+    usuario_id INTEGER PRIMARY KEY AUTOINCREMENT,
     identificacion TEXT UNIQUE NOT NULL,
     tipo_identificacion TEXT CHECK (length (tipo_identificacion) <= 1) NOT NULL,
     nombres TEXT NOT NULL,
@@ -35,8 +41,10 @@ CREATE TABLE
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     activo INTEGER DEFAULT 1,
+    rol_id INTEGER NOT NULL, -- Relación con el Rol
     fecha_creacion TEXT DEFAULT (DATETIME ('now', 'localtime')),
-    fecha_modificacion TEXT DEFAULT (DATETIME ('now', 'localtime'))
+    fecha_modificacion TEXT DEFAULT (DATETIME ('now', 'localtime')),
+    CONSTRAINT fk_rol_usuario FOREIGN KEY (rol_id) REFERENCES roles (rol_id) ON DELETE RESTRICT
   );
 
 -- Módulo de Registro de Clientes
@@ -94,12 +102,12 @@ CREATE TABLE
     historial_id INTEGER PRIMARY KEY AUTOINCREMENT,
     observaciones_tecnicas TEXT,
     fecha TEXT DEFAULT (DATETIME ('now', 'localtime')),
-    tecnico_id INTEGER,
+    usuario_id INTEGER NOT NULL,
     equipo_id INTEGER NOT NULL,
     estado_id INTEGER NOT NULL,
     CONSTRAINT fk_equipo_historial FOREIGN KEY (equipo_id) REFERENCES equipos (equipo_id) ON DELETE CASCADE,
     CONSTRAINT fk_estado_historial FOREIGN KEY (estado_id) REFERENCES estados_reparacion (estado_id) ON DELETE RESTRICT,
-    CONSTRAINT fk_tecnico_historial FOREIGN KEY (tecnico_id) REFERENCES tecnicos (tecnico_id) ON DELETE SET NULL
+    CONSTRAINT fk_usuario_historial FOREIGN KEY (usuario_id) REFERENCES usuarios (usuario_id) ON DELETE SET NULL
   );
 
 -- Módulo de Entrega de Equiposd
@@ -112,9 +120,9 @@ CREATE TABLE
     conformidad_cliente INTEGER DEFAULT 1,
     comprobante_nro TEXT UNIQUE,
     equipo_id INTEGER UNIQUE NOT NULL,
-    tecnico_id INTEGER NOT NULL,
+    usuario_id INTEGER NOT NULL,
     CONSTRAINT fk_equipo_entrega FOREIGN KEY (equipo_id) REFERENCES equipos (equipo_id) ON DELETE RESTRICT,
-    CONSTRAINT fk_tecnico_entrega FOREIGN KEY (tecnico_id) REFERENCES tecnicos (tecnico_id) ON DELETE RESTRICT
+    CONSTRAINT fk_usuario_historial FOREIGN KEY (usuario_id) REFERENCES usuarios (usuario_id) ON DELETE RESTRICT
   );
 
 -- Registro de Acciones Exitosas (Auditoría)

@@ -6,7 +6,7 @@ type HistorialReparaciones struct {
 	FechaCambio           string `json:"fecha_cambio"`
 
 	EquipoId  int `json:"equipo_id"`
-	TecnicoId int `json:"tecnico_id"`
+	UsuarioId int `json:"usuario_id"`
 	EstadoId  int `json:"estado_id"`
 }
 
@@ -21,7 +21,7 @@ type HistorialReparacionesDTO struct {
 	EstadoId int    `json:"estado_id"`
 	Estado   string `json:"estado"`
 
-	TecnicoId int `json:"tecnico_id"`
+	UsuarioId int `json:"usuario_id"`
 	Nombres   int `json:"nombres"`
 	Apellidos int `json:"apellidos"`
 }

@@ -28,7 +28,7 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 		ConformidadCliente int    `json:"conformidad_cliente"`
 		ComprobanteNro     string `json:"comprobante_nro"`
 		EquipoCodigo       string `json:"equipo_codigo"`
-		TecnicoNombre      string `json:"tecnico_nombre"`
+		Usuario            string `json:"nombres"`
 	}
 
 	var ent EntregaResponse
@@ -42,10 +42,10 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
       en.conformidad_cliente,
       en.comprobante_nro,
       eq.codigo,
-      (t.nombres || ' ' || t.apellidos) AS tecnico_nombre
+      (u.nombres || ' ' || u.apellidos) AS nombres
     FROM entregas en
     INNER JOIN equipos eq ON en.equipo_id = eq.equipo_id
-    INNER JOIN tecnicos t ON en.tecnico_id = t.tecnico_id
+    INNER JOIN usuarios u ON en.usuario_id = u.usuario_id
     WHERE en.equipo_id = ?`, id).Scan(
 		&ent.EntregaId,
 		&ent.FechaEntrega,
@@ -54,7 +54,7 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 		&ent.ConformidadCliente,
 		&ent.ComprobanteNro,
 		&ent.EquipoCodigo,
-		&ent.TecnicoNombre,
+		&ent.Usuario,
 	)
 
 	if err != nil {
@@ -74,7 +74,7 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 
 	var req struct {
 		EquipoId           int    `json:"equipo_id"`
-		TecnicoId          int    `json:"tecnico_id"`
+		UsuarioId          int    `json:"usuario_id"`
 		TrabajosRealizados string `json:"trabajos_realizados"`
 		EstadoFinalEquipo  string `json:"estado_final_equipo"`
 		ConformidadCliente int    `json:"conformidad_cliente"`
@@ -85,9 +85,49 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	// 1. Obtener el estado actual del equipo antes de liquidar
+	// 1. Obtener el Rol del Usuario
+	var rolUsuario string
+	err := conn.QueryRow(`
+		SELECT r.nombre 
+		FROM usuarios u
+		INNER JOIN roles r ON u.rol_id = r.rol_id
+		WHERE u.usuario_id = ? AND u.activo = 1`,
+		req.UsuarioId,
+	).Scan(&rolUsuario)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Usuario no autorizado o inexistente"})
+		}
+		_ = helpers.InsertLogsError(conn, "entregas", "error consultando rol "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al verificar permisos"})
+	}
+
+	if rolUsuario == "TECNICO" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"message": "Permiso denegado. Como Técnico no estás autorizado para procesar actas de entrega.",
+		})
+	}
+
+	// =========================================================================
+	// 🛡️ NUEVO ESCUDO ANTIDUPLICIDAD: Verificar si ya existe en la tabla 'entregas'
+	// =========================================================================
+	var yaExisteEntrega int
+	err = conn.QueryRow(`SELECT COUNT(*) FROM entregas WHERE equipo_id = ?`, req.EquipoId).Scan(&yaExisteEntrega)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "entregas", "error verificando duplicidad de entrega "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el historial de entregas"})
+	}
+	if yaExisteEntrega > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Operación inválida. Este equipo ya cuenta con un acta de entrega registrada y no se puede duplicar.",
+		})
+	}
+	// =========================================================================
+
+	// 2. Obtener el estado actual del equipo
 	var estadoActualId int
-	err := conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, req.EquipoId).Scan(&estadoActualId)
+	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, req.EquipoId).Scan(&estadoActualId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El equipo no existe"})
@@ -96,22 +136,17 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el equipo"})
 	}
 
-	// =========================================================================
-	// NUEVO CANDADO DE FLUJO: Solo se permite entregar si está "Listo para entrega" (5)
-	// =========================================================================
+	// Solo se permite entregar si está "Listo para entrega" (5)
 	if estadoActualId != 5 {
-		// Si ya es 6 o 7, avisamos que ya fue cerrado
 		if estadoActualId == 6 || estadoActualId == 7 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Este equipo ya fue procesado y cerrado anteriormente"})
 		}
-		// Si es del 1 al 4, bloqueamos porque no ha terminado el taller
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "No se puede registrar la entrega. El equipo debe estar en estado 'Listo para entrega' primero.",
 		})
 	}
-	// =========================================================================
 
-	// 2. REGLA DE NEGOCIO FINANCIERA: Verificar que el saldo de la cuenta sea 0.00
+	// 3. REGLA DE NEGOCIO FINANCIERA: Verificar que el saldo de la cuenta sea 0.00
 	var saldo float64
 	err = conn.QueryRow(`SELECT saldo FROM cuentas_reparacion WHERE equipo_id = ?`, req.EquipoId).Scan(&saldo)
 	if err != nil {
@@ -124,7 +159,7 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 		})
 	}
 
-	// 3. Iniciar Transacción Atómica
+	// 4. Iniciar Transacción Atómica
 	tx, err = conn.Begin()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error iniciando transacción "+err.Error())
@@ -134,82 +169,85 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 
 	fechaActual := helpers.FechaActual()
 
-	// 4. Obtener secuencial para el número de comprobante de entrega
+	// 5. Obtener secuencial para el número de comprobante de entrega
 	comprobanteNro, err := helpers.ObtenerCodigo(conn, "O")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error obteniendo secuencial "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error generando número de comprobante"})
 	}
 
-	// 5. PASO A: Insertar en la tabla 'entregas'
+	// 6. PASO A: Insertar en la tabla 'entregas'
 	_, err = tx.Exec(`
-    INSERT INTO entregas (
-      fecha_entrega,
-      trabajos_realizados,
-      estado_final_equipo,
-      conformidad_cliente,
-      comprobante_nro,
-      equipo_id,
-      tecnico_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO entregas (
+			fecha_entrega,
+			trabajos_realizados,
+			estado_final_equipo,
+			conformidad_cliente,
+			comprobante_nro,
+			equipo_id,
+			usuario_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		fechaActual,
 		strings.ToUpper(req.TrabajosRealizados),
 		strings.ToUpper(req.EstadoFinalEquipo),
 		req.ConformidadCliente,
 		comprobanteNro,
 		req.EquipoId,
-		req.TecnicoId,
+		req.UsuarioId,
 	)
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "entregas", "error insertando entrega "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al registrar el acta de entrega"})
 	}
 
-	// 6. PASO B: Actualizar el estado global del equipo a 'Entregado' (ID 6)
+	// 7. PASO B: Actualizar el estado global del equipo a 'Entregado' (ID 6)
 	_, err = tx.Exec(`
-    UPDATE equipos 
-    SET estado_id = 6, 
-        fecha_modificacion = ? 
-    WHERE equipo_id = ?`,
+		UPDATE equipos 
+		SET estado_id = 6, 
+		    fecha_modificacion = ? 
+		WHERE equipo_id = ?`,
 		fechaActual,
 		req.EquipoId,
 	)
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "entregas", "error actualizando estado del equipo "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar el estado final del equipo"})
 	}
 
-	// 7. PASO C: Registrar el hito de cierre en el historial_reparaciones
+	// 8. PASO C: Registrar hito en 'historial_reparaciones'
 	_, err = tx.Exec(`
-    INSERT INTO historial_reparaciones (
-      observaciones_tecnicas,
-      fecha_cambio,
-      tecnico_id,
-      equipo_id,
-      estado_id
-    ) VALUES (?, ?, ?, ?, 6)`, // 6 = Entregado
+		INSERT INTO historial_reparaciones (
+			observaciones_tecnicas,
+			fecha, 
+			usuario_id, 
+			equipo_id,
+			estado_id
+		) VALUES (?, ?, ?, ?, 6)`,
 		"EQUIPO ENTREGADO FORMALMENTE AL CLIENTE. COMPROBANTE NRO: "+comprobanteNro,
 		fechaActual,
-		req.TecnicoId,
+		req.UsuarioId,
 		req.EquipoId,
 	)
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "entregas", "error insertando historial de cierre "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al registrar el hito de cierre"})
 	}
 
-	// 8. Confirmar todos los cambios en la base de datos
+	// 9. Confirmar todos los cambios en la base de datos
 	err = tx.Commit()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error confirmando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al confirmar la entrega"})
 	}
 
-	// 9. Incrementar el secuencial del comprobante de entrega
+	// 10. Incrementar el secuencial del comprobante de entrega
 	_ = helpers.ActualizarCodigo(conn, "O")
 
-	// 10. Log de Auditoría OK
-	_ = helpers.InsertLogs(conn, "INSERT", "entregas", req.EquipoId, "Entrega y acta de salida generada correctamente")
+	// 11. Log de Auditoría OK
+	_ = helpers.InsertLogs(conn, "INSERT", "entregas", req.EquipoId, "Entrega y acta de salida generada correctamente. Generó: "+rolUsuario)
 
 	return c.Status(201).JSON(fiber.Map{
 		"message":         "Entrega procesada y registrada con éxito",
