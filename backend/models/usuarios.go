@@ -13,3 +13,13 @@ type Usuarios struct {
 	FechaModificacion  string `json:"fecha_modificacion"`
 	RolId              int    `json:"rol_id"`
 }
+
+type UsuarioLogin struct {
+	Identificacion string `json:"identificacion"`
+	Password       string `json:"password"`
+}
+
+type UsuarioJWT struct {
+	UsuarioId int    `json:"usuario_id"`
+	Nombres   string `json:"nombres"`
+}

@@ -208,17 +208,29 @@ func ObtenerUsuarioPorIdentificacion(c *fiber.Ctx) error {
 func CrearUsuario(c *fiber.Ctx) error {
 
 	var (
-		TecnicoId int
 		conn      = database.GetDB()
 		exist     int
 		err       error
 		usuario   models.Usuarios
 		tx        *sql.Tx
+		UsuarioId int
+		passHash  string
+		claims    *models.CustomClaims
 	)
 
 	if err = c.BodyParser(&usuario); err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+	}
+
+	claims, err = helpers.ReadClaims(c)
+	if err = c.BodyParser(&usuario); err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+	}
+
+	if claims.UserId == 1 {
+		return c.Status(409).JSON(fiber.Map{"messaje": "solo usuario administrador puenden realizar esta accion"})
 	}
 
 	err = conn.QueryRow(`SELECT COUNT(*) FROM usuarios WHERE identificacion = ?`, strings.ToUpper(usuario.Identificacion)).Scan(&exist)
@@ -241,7 +253,7 @@ func CrearUsuario(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
-	passHash, err := helpers.EncriptarDato(usuario.Password)
+	passHash, err = helpers.EncriptarDato(usuario.Password)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "error incriptando el dato "+err.Error())
@@ -271,7 +283,7 @@ func CrearUsuario(c *fiber.Ctx) error {
 		true,
 		usuario.RolId,
 		helpers.FechaActual(),
-		helpers.FechaActual()).Scan(&TecnicoId)
+		helpers.FechaActual()).Scan(&UsuarioId)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "error insertando el registro "+err.Error())
@@ -285,7 +297,7 @@ func CrearUsuario(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
-	err = helpers.InsertLogs(conn, "INSERT", "usuarios", TecnicoId, "registro creado correctamente")
+	err = helpers.InsertLogs(conn, "INSERT", "usuarios", UsuarioId, "registro creado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
@@ -430,5 +442,141 @@ func EliminarUsuario(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(fiber.Map{"message": "registro eliminado correctamente"})
+
+}
+
+func LoginUsuario(c *fiber.Ctx) error {
+	var (
+		conn                       = database.GetDB()
+		err                        error
+		login                      models.UsuarioLogin
+		passwordDB, nombres, token string
+		usuarioID                  int
+	)
+
+	if err = c.BodyParser(&login); err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", "Cuerpo de solicitud inválido")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cuerpo de solicitud inválido"})
+	}
+
+	err = conn.QueryRow(`
+		SELECT
+			COALESCE(usuario_id, 0),
+			COALESCE(password, ''),
+			COALESCE(nombres, '')
+		FROM usuarios
+		WHERE identificacion = ?
+	`, login.Identificacion).Scan(
+		&usuarioID,
+		&passwordDB,
+		&nombres,
+	)
+
+	if err == sql.ErrNoRows {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "usuario no existe"})
+	}
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+	}
+
+	passwordDB, err = helpers.DesencriptarDato(passwordDB)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error desencriptando la contraseña"})
+	}
+
+	if passwordDB != login.Password {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "contraseña incorrecta"})
+	}
+
+	token, err = helpers.GenerateToken(models.UsuarioJWT{UsuarioId: usuarioID, Nombres: nombres})
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error generando token"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": token})
+}
+
+func ResetUsuario(c *fiber.Ctx) error {
+
+	type ResetDatos struct {
+		Identificacion string `json:"identificacion"`
+		Password       string `json:"password"`
+	}
+
+	var (
+		usuarioID int
+		conn      = database.GetDB()
+		err       error
+		reset     ResetDatos
+		tx        *sql.Tx
+		passHash  string
+	)
+
+	if err = c.BodyParser(&reset); err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", "Cuerpo de solicitud inválido")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cuerpo de solicitud inválido"})
+	}
+
+	err = conn.QueryRow(`SELECT usuario_id FROM usuarios WHERE identificacion = ?`, reset.Identificacion).Scan(&usuarioID)
+
+	if err == sql.ErrNoRows {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
+	}
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+	}
+
+	tx, err = conn.Begin()
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error iniciando transacción"})
+	}
+
+	defer tx.Rollback()
+
+	passHash, err = helpers.EncriptarDato(reset.Password)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error encriptando la contraseña"})
+	}
+
+	_, err = tx.Exec(`
+		UPDATE usuarios
+		SET
+			password 					 = ?,
+			fecha_modificacion = ?
+		WHERE
+			usuario_id = ?
+	`,
+		passHash,
+		helpers.FechaActual(),
+		usuarioID,
+	)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error confirmando transacción"})
+	}
+
+	err = helpers.InsertLogs(conn, "UPDATE", "usuarios", usuarioID, "contraseña actualizada correctamente")
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error insertando la auditoría"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "contraseña actualizada correctamente"})
 
 }
