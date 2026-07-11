@@ -22,4 +22,5 @@ type UsuarioLogin struct {
 type UsuarioJWT struct {
 	UsuarioId int    `json:"usuario_id"`
 	Nombres   string `json:"nombres"`
+	Rol       string `json:"rol"`
 }

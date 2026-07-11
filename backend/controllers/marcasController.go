@@ -128,11 +128,18 @@ func CrearMarca(c *fiber.Ctx) error {
 		err     error
 		marca   models.Marcas
 		tx      *sql.Tx
+		claims  *models.CustomClaims
 	)
 
 	if err = c.BodyParser(&marca); err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+	}
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "marcas", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
 	err = conn.QueryRow(`SELECT COUNT(*) FROM marcas WHERE nombre = ?`, strings.ToUpper(marca.Nombre)).Scan(&exist)
@@ -178,7 +185,7 @@ func CrearMarca(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
-	err = helpers.InsertLogs(conn, "INSERT", "marcas", MarcaId, "registro creado correctamente")
+	err = helpers.InsertLogs(conn, "INSERT", "marcas", claims.Name, "registro creado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
@@ -196,11 +203,18 @@ func ModificarMarca(c *fiber.Ctx) error {
 		err     error
 		marca   models.Marcas
 		tx      *sql.Tx
+		claims  *models.CustomClaims
 	)
 
 	if err = c.BodyParser(&marca); err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+	}
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "marcas", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
 	err = conn.QueryRow(`SELECT marca_id FROM marcas WHERE marca_id = ?`, marca.MarcaId).Scan(&MarcaId)
@@ -250,7 +264,7 @@ func ModificarMarca(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
-	err = helpers.InsertLogs(conn, "UPDATE", "marcas", marca.MarcaId, "registro actualizado correctamente")
+	err = helpers.InsertLogs(conn, "UPDATE", "marcas", claims.Name, "registro actualizado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
@@ -267,7 +281,14 @@ func EliminarMarca(c *fiber.Ctx) error {
 		conn    = database.GetDB()
 		err     error
 		tx      *sql.Tx
+		claims  *models.CustomClaims
 	)
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "marcas", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+	}
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
@@ -304,7 +325,7 @@ func EliminarMarca(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error eliminando el registro"})
 	}
 
-	err = helpers.InsertLogs(tx, "DELETE", "marcas", id, "registro eliminado correctamente")
+	err = helpers.InsertLogs(tx, "DELETE", "marcas", claims.Name, "registro eliminado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})

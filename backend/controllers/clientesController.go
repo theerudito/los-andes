@@ -213,11 +213,18 @@ func CrearCliente(c *fiber.Ctx) error {
 		err       error
 		cliente   models.Clientes
 		tx        *sql.Tx
+		claims    *models.CustomClaims
 	)
 
 	if err = c.BodyParser(&cliente); err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+	}
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "clientes", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
 	err = conn.QueryRow(`SELECT COUNT(*) FROM clientes WHERE identificacion = ?`, strings.ToUpper(cliente.Identificacion)).Scan(&exist)
@@ -275,7 +282,7 @@ func CrearCliente(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
-	err = helpers.InsertLogs(conn, "INSERT", "clientes", ClienteId, "registro creado correctamente")
+	err = helpers.InsertLogs(conn, "INSERT", "clientes", claims.Name, "registro creado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
@@ -292,11 +299,18 @@ func ModificarCliente(c *fiber.Ctx) error {
 		err       error
 		cliente   models.Clientes
 		tx        *sql.Tx
+		claims    *models.CustomClaims
 	)
 
 	if err = c.BodyParser(&cliente); err != nil {
-		_ = helpers.InsertLogsError(conn, "cliente", "Cuerpo de solicitud inválido")
+		_ = helpers.InsertLogsError(conn, "clientes", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+	}
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "clientes", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
 	err = conn.QueryRow(`SELECT cliente_id FROM clientes WHERE cliente_id = ?`, cliente.ClienteId).Scan(&ClienteId)
@@ -354,13 +368,14 @@ func ModificarCliente(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
 	}
 
-	err = helpers.InsertLogs(conn, "UPDATE", "clientes", cliente.ClienteId, "registro actualizado correctamente")
+	err = helpers.InsertLogs(conn, "UPDATE", "clientes", claims.Name, "registro actualizado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
 	return c.Status(201).JSON(fiber.Map{"message": "registro actualizado correctamente"})
+
 }
 
 func EliminarCliente(c *fiber.Ctx) error {
@@ -369,7 +384,14 @@ func EliminarCliente(c *fiber.Ctx) error {
 		conn      = database.GetDB()
 		err       error
 		tx        *sql.Tx
+		claims    *models.CustomClaims
 	)
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "clientes", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+	}
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
@@ -400,7 +422,7 @@ func EliminarCliente(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error eliminando el registro"})
 	}
 
-	err = helpers.InsertLogs(tx, "DELETE", "clientes", id, "registro eliminado correctamente")
+	err = helpers.InsertLogs(tx, "DELETE", "clientes", claims.Name, "registro eliminado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})

@@ -131,7 +131,7 @@ CREATE TABLE
     log_ok_id INTEGER PRIMARY KEY AUTOINCREMENT,
     fecha TEXT DEFAULT (DATETIME ('now', 'localtime')),
     modulo TEXT NOT NULL,
-    registro_id INTEGER,
+    usuario TEXT,
     accion TEXT NOT NULL,
     descripcion TEXT NOT NULL
   );

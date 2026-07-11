@@ -88,4 +88,12 @@ func SetupRoutes(app *fiber.App) {
 	protectedEntregas.Get("/:id", controllers.ConsultarEntregaPorEquipo)
 	protectedEntregas.Post("/", controllers.RegistrarEntrega)
 
+	// logs error
+	protectedLogsError := v1.Group("/logs-error", helpers.JWTMiddleware())
+	protectedLogsError.Post("/", controllers.ObtenerLogsError)
+
+	// logs ok
+	protectedLogsOK := v1.Group("/logs-ok", helpers.JWTMiddleware())
+	protectedLogsOK.Post("/", controllers.ObtenerLogsOk)
+
 }

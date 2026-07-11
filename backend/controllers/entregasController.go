@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"los_andes/database"
 	"los_andes/helpers"
+	"los_andes/models"
 	"strconv"
 	"strings"
 
@@ -13,27 +14,23 @@ import (
 )
 
 func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
-	conn := database.GetDB()
 
-	id, err := strconv.Atoi(c.Params("id"))
+	var (
+		conn    = database.GetDB()
+		rows    *sql.Rows
+		err     error
+		entrega models.EntregaDTO
+		id      int
+		found   = false
+	)
+
+	id, err = strconv.Atoi(c.Params("id"))
+
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID de equipo inválido"})
 	}
 
-	type EntregaResponse struct {
-		EntregaId          int    `json:"entrega_id"`
-		FechaEntrega       string `json:"fecha_entrega"`
-		TrabajosRealizados string `json:"trabajos_realizados"`
-		EstadoFinalEquipo  string `json:"estado_final_equipo"`
-		ConformidadCliente int    `json:"conformidad_cliente"`
-		ComprobanteNro     string `json:"comprobante_nro"`
-		EquipoCodigo       string `json:"equipo_codigo"`
-		Usuario            string `json:"nombres"`
-	}
-
-	var ent EntregaResponse
-
-	err = conn.QueryRow(`
+	rows, err = conn.Query(`
     SELECT 
       en.entrega_id,
       en.fecha_entrega,
@@ -46,88 +43,85 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
     FROM entregas en
     INNER JOIN equipos eq ON en.equipo_id = eq.equipo_id
     INNER JOIN usuarios u ON en.usuario_id = u.usuario_id
-    WHERE en.equipo_id = ?`, id).Scan(
-		&ent.EntregaId,
-		&ent.FechaEntrega,
-		&ent.TrabajosRealizados,
-		&ent.EstadoFinalEquipo,
-		&ent.ConformidadCliente,
-		&ent.ComprobanteNro,
-		&ent.EquipoCodigo,
-		&ent.Usuario,
-	)
+    WHERE en.equipo_id = ?`, id)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Este equipo aún no cuenta con un registro de entrega"})
-		}
-		_ = helpers.InsertLogsError(conn, "entregas", "error consultando entrega "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error al consultar los datos de la entrega"})
+		_ = helpers.InsertLogsError(conn, "usuarios", "Error al ejecutar la consulta "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
-	return c.Status(200).JSON(ent)
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&entrega.EntregaId,
+			&entrega.FechaEntrega,
+			&entrega.TrabajosRealizados,
+			&entrega.EstadoFinalEquipo,
+			&entrega.ConformidadCliente,
+			&entrega.ComprobanteNro,
+			&entrega.EquipoCodigo,
+			&entrega.Usuario)
+
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "usuarios", "Error al leer los registros "+err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
+		}
+
+		found = true
+
+	}
+
+	if !found {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
+	}
+
+	return c.JSON(entrega)
+
 }
 
 func RegistrarEntrega(c *fiber.Ctx) error {
-	conn := database.GetDB()
-	var tx *sql.Tx
 
-	var req struct {
-		EquipoId           int    `json:"equipo_id"`
-		UsuarioId          int    `json:"usuario_id"`
-		TrabajosRealizados string `json:"trabajos_realizados"`
-		EstadoFinalEquipo  string `json:"estado_final_equipo"`
-		ConformidadCliente int    `json:"conformidad_cliente"`
-	}
+	var (
+		entrega models.Entrega
+		conn    = database.GetDB()
+		err     error
+		tx      *sql.Tx
+		claims  *models.CustomClaims
+		existe  int
+		estado  int
+		saldo   float64
+	)
 
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.BodyParser(&entrega); err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	// 1. Obtener el Rol del Usuario
-	var rolUsuario string
-	err := conn.QueryRow(`
-		SELECT r.nombre 
-		FROM usuarios u
-		INNER JOIN roles r ON u.rol_id = r.rol_id
-		WHERE u.usuario_id = ? AND u.activo = 1`,
-		req.UsuarioId,
-	).Scan(&rolUsuario)
+	claims, err = helpers.ReadClaims(c)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Usuario no autorizado o inexistente"})
-		}
-		_ = helpers.InsertLogsError(conn, "entregas", "error consultando rol "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error al verificar permisos"})
+		_ = helpers.InsertLogsError(conn, "equipos", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
-	if rolUsuario == "TECNICO" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"message": "Permiso denegado. Como Técnico no estás autorizado para procesar actas de entrega.",
-		})
+	if claims.Rol == "TECNICO" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "solo usuario administrador o venderor puenden realizar esta accion"})
 	}
 
-	// =========================================================================
-	// 🛡️ NUEVO ESCUDO ANTIDUPLICIDAD: Verificar si ya existe en la tabla 'entregas'
-	// =========================================================================
-	var yaExisteEntrega int
-	err = conn.QueryRow(`SELECT COUNT(*) FROM entregas WHERE equipo_id = ?`, req.EquipoId).Scan(&yaExisteEntrega)
+	err = conn.QueryRow(`SELECT COUNT(*) FROM entregas WHERE equipo_id = ?`, entrega.EquipoId).Scan(&existe)
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error verificando duplicidad de entrega "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el historial de entregas"})
 	}
-	if yaExisteEntrega > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Operación inválida. Este equipo ya cuenta con un acta de entrega registrada y no se puede duplicar.",
-		})
-	}
-	// =========================================================================
 
-	// 2. Obtener el estado actual del equipo
-	var estadoActualId int
-	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, req.EquipoId).Scan(&estadoActualId)
+	if existe > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ya existe una entrega registrada"})
+	}
+
+	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, entrega.EquipoId).Scan(&existe)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El equipo no existe"})
@@ -136,9 +130,8 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el equipo"})
 	}
 
-	// Solo se permite entregar si está "Listo para entrega" (5)
-	if estadoActualId != 5 {
-		if estadoActualId == 6 || estadoActualId == 7 {
+	if estado != 5 {
+		if estado == 6 || estado == 7 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Este equipo ya fue procesado y cerrado anteriormente"})
 		}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -146,37 +139,37 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 		})
 	}
 
-	// 3. REGLA DE NEGOCIO FINANCIERA: Verificar que el saldo de la cuenta sea 0.00
-	var saldo float64
-	err = conn.QueryRow(`SELECT saldo FROM cuentas_reparacion WHERE equipo_id = ?`, req.EquipoId).Scan(&saldo)
+	err = conn.QueryRow(`SELECT saldo FROM cuentas_reparacion WHERE equipo_id = ?`, entrega.EquipoId).Scan(&saldo)
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error consultando saldo "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el saldo de la cuenta"})
 	}
+
 	if saldo > 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": fmt.Sprintf("No se puede entregar el equipo. Registra un saldo pendiente de: $%.2f", saldo),
 		})
 	}
 
-	// 4. Iniciar Transacción Atómica
 	tx, err = conn.Begin()
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error iniciando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error iniciando transacción"})
 	}
+
 	defer tx.Rollback()
 
 	fechaActual := helpers.FechaActual()
 
-	// 5. Obtener secuencial para el número de comprobante de entrega
 	comprobanteNro, err := helpers.ObtenerCodigo(conn, "O")
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error obteniendo secuencial "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error generando número de comprobante"})
 	}
 
-	// 6. PASO A: Insertar en la tabla 'entregas'
 	_, err = tx.Exec(`
 		INSERT INTO entregas (
 			fecha_entrega,
@@ -188,35 +181,35 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 			usuario_id
 		) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		fechaActual,
-		strings.ToUpper(req.TrabajosRealizados),
-		strings.ToUpper(req.EstadoFinalEquipo),
-		req.ConformidadCliente,
+		strings.ToUpper(entrega.TrabajosRealizados),
+		strings.ToUpper(entrega.EstadoFinalEquipo),
+		entrega.ConformidadCliente,
 		comprobanteNro,
-		req.EquipoId,
-		req.UsuarioId,
+		entrega.EquipoId,
+		claims.UserId,
 	)
+
 	if err != nil {
 		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "entregas", "error insertando entrega "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al registrar el acta de entrega"})
 	}
 
-	// 7. PASO B: Actualizar el estado global del equipo a 'Entregado' (ID 6)
 	_, err = tx.Exec(`
 		UPDATE equipos 
 		SET estado_id = 6, 
 		    fecha_modificacion = ? 
 		WHERE equipo_id = ?`,
 		fechaActual,
-		req.EquipoId,
+		entrega.EquipoId,
 	)
+
 	if err != nil {
 		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "entregas", "error actualizando estado del equipo "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar el estado final del equipo"})
 	}
 
-	// 8. PASO C: Registrar hito en 'historial_reparaciones'
 	_, err = tx.Exec(`
 		INSERT INTO historial_reparaciones (
 			observaciones_tecnicas,
@@ -225,32 +218,169 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 			equipo_id,
 			estado_id
 		) VALUES (?, ?, ?, ?, 6)`,
-		"EQUIPO ENTREGADO FORMALMENTE AL CLIENTE. COMPROBANTE NRO: "+comprobanteNro,
+		strings.ToUpper(entrega.Observaciones),
 		fechaActual,
-		req.UsuarioId,
-		req.EquipoId,
+		claims.UserId,
+		entrega.EquipoId,
 	)
+
 	if err != nil {
 		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "entregas", "error insertando historial de cierre "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al registrar el hito de cierre"})
 	}
 
-	// 9. Confirmar todos los cambios en la base de datos
+	err = helpers.InsertLogs(tx, "INSERT", "entregas", claims.Name, "registro creado correctamente")
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", "error insertando la auditoria "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+	}
+
 	err = tx.Commit()
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error confirmando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al confirmar la entrega"})
 	}
 
-	// 10. Incrementar el secuencial del comprobante de entrega
 	_ = helpers.ActualizarCodigo(conn, "O")
 
-	// 11. Log de Auditoría OK
-	_ = helpers.InsertLogs(conn, "INSERT", "entregas", req.EquipoId, "Entrega y acta de salida generada correctamente. Generó: "+rolUsuario)
+	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente"})
 
-	return c.Status(201).JSON(fiber.Map{
-		"message":         "Entrega procesada y registrada con éxito",
-		"comprobante_nro": comprobanteNro,
-	})
+}
+
+func ProcesarEntregaEquipo(c *fiber.Ctx) error {
+	var (
+		conn    = database.GetDB()
+		tx      *sql.Tx
+		entrega models.EntregaEquipo
+		claims  *models.CustomClaims
+		err     error
+		estado  int
+		saldo   float64
+	)
+
+	if err := c.BodyParser(&entrega); err != nil {
+		_ = helpers.InsertLogsError(conn, "entregas", "Cuerpo de solicitud inválido")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+	}
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "entregas", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+	}
+
+	if claims.Rol == "TECNICO" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "solo usuario administrador o vendedor puenden realizar esta accion"})
+	}
+
+	err = conn.QueryRow(`
+		SELECT e.estado_id, COALESCE(cr.saldo, 0.00) 
+		FROM equipos e
+		LEFT JOIN cuentas_reparacion cr ON e.equipo_id = cr.equipo_id
+		WHERE e.equipo_id = ?`,
+		entrega.EquipoId,
+	).Scan(&estado, &saldo)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El equipo especificado no existe"})
+		}
+		_ = helpers.InsertLogsError(conn, "entregas", "error consultando estado/saldo: "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al verificar información del equipo"})
+	}
+
+	if estado != 5 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Solo se pueden entregar formalmente aquellos equipos que estén en estado 'Listo para entrega' (5)."})
+	}
+
+	if saldo > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": fmt.Sprintf("No se puede proceder con la entrega. Registra un saldo pendiente de: $%.2f", saldo)})
+	}
+
+	tx, err = conn.Begin()
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "entregas", "error iniciando transacción: "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error interno del servidor"})
+	}
+
+	defer tx.Rollback()
+
+	fechaActual := helpers.FechaActual()
+
+	_, err = tx.Exec(`
+		INSERT INTO entregas (
+			fecha_entrega,
+			trabajos_realizados,
+			estado_final_equipo,
+			conformidad_cliente,
+			comprobante_nro,
+			equipo_id,
+			usuario_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		fechaActual,
+		strings.ToUpper(entrega.TrabajosRealizados),
+		strings.ToUpper(entrega.EstadoFinalEquipo),
+		entrega.ConformidadCliente,
+		entrega.ComprobanteNro,
+		entrega.EquipoId,
+		claims.UserId,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		_ = helpers.InsertLogsError(conn, "entregas", "error al guardar acta de entrega: "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al guardar el acta física de entrega"})
+	}
+
+	_, err = tx.Exec(`
+		UPDATE equipos 
+		SET estado_id = 6, 
+		    fecha_modificacion = ? 
+		WHERE equipo_id = ?`,
+		fechaActual,
+		entrega.EquipoId,
+	)
+
+	if err != nil {
+		_ = tx.Rollback()
+		_ = helpers.InsertLogsError(conn, "entregas", "error actualizando estado a entregado: "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar el estado del equipo"})
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO historial_reparaciones (
+			observaciones_tecnicas,
+			fecha,                  
+			usuario_id,
+			equipo_id,
+			estado_id
+		) VALUES (?, ?, ?, ?, 6)`,
+		strings.ToUpper(entrega.Observaciones),
+		fechaActual,
+		claims.UserId,
+		entrega.EquipoId,
+	)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "entregas", "error actualizando el registro: "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error actualizando el registro"})
+	}
+
+	err = helpers.InsertLogs(tx, "UPDATE", "entregas", claims.Name, "registro actualizando correctamente")
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "entregas", "error insertando la auditoria "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "entregas", "error confirmando transacción "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
+	}
+
+	return c.Status(200).JSON(fiber.Map{"message": "registro actualizando correctamente"})
+
 }
