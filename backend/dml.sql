@@ -38,3 +38,22 @@ VALUES
   ('ADMINISTRADOR'),
   ('TECNICO'),
   ('VENDEDOR');
+
+INSERT INTO usuarios (
+    identificacion,
+    tipo_identificacion,
+    nombres,
+    apellidos,
+    email,
+    password,
+    rol_id
+)
+VALUES (
+           '123456789',
+           'P',
+           'SISTEMA',
+           '',
+           'erudito.dev@gmail.com',
+           '60g4/J2k7ociiPUxuj7GjJfAYxAubMJxVVZQ8dr86l5BD7c=',
+           1
+       );

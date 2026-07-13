@@ -22,7 +22,7 @@ func InitDB() {
 
 	once.Do(func() {
 
-		db, err := sql.Open("sqlite", "istla.db")
+		db, err := sql.Open("sqlite", "./istla.db")
 		if err != nil {
 			log.Fatalf("❌ Error al abrir SQLite: %v", err)
 		}
