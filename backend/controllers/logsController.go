@@ -12,31 +12,32 @@ import (
 func ObtenerLogsError(c *fiber.Ctx) error {
 
 	var (
-		clientes []models.Clientes
-		conn     = database.GetDB()
-		rows     *sql.Rows
-		err      error
+		logs []models.LogError
+		conn = database.GetDB()
+		rows *sql.Rows
+		err  error
+		lg   models.LogOkDTO
 	)
+
+	if err = c.BodyParser(&lg); err != nil {
+		_ = helpers.InsertLogsError(conn, "log_error", "Cuerpo de solicitud inválido")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+	}
 
 	rows, err = conn.Query(`
 		SELECT
-			c.cliente_id,
-			c.identificacion,
-			c.tipo_identificacion,
-			c.nombres,
-			c.apellidos,
-			c.telefono,
-			c.email,
-			c.direccion,
-			c.fecha_creacion,
-			c.fecha_modificacion
+			log_error_id,
+			fecha,
+			modulo,
+			mensaje_error
 		FROM 
-			clientes AS c
-    ORDER BY 
-			c.cliente_id DESC`)
+			log_error 
+		WHERE DATE(fecha) BETWEEN ? AND ?
+   		ORDER BY 
+			fecha DESC`, lg.FechaDesde, lg.FechaDesde)
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
+		_ = helpers.InsertLogsError(conn, "log_error", "Error al ejecutar la consulta")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
@@ -44,33 +45,27 @@ func ObtenerLogsError(c *fiber.Ctx) error {
 
 	for rows.Next() {
 
-		var cliente models.Clientes
+		var log models.LogError
 
 		err = rows.Scan(
-			&cliente.ClienteId,
-			&cliente.Identificacion,
-			&cliente.TipoIdentificacion,
-			&cliente.Nombres,
-			&cliente.Apellidos,
-			&cliente.Telefono,
-			&cliente.Email,
-			&cliente.Direccion,
-			&cliente.FechaCreacion,
-			&cliente.FechaModificacion)
+			&log.LogErrorId,
+			&log.Fecha,
+			&log.Modulo,
+			&log.MensajeError)
 
 		if err != nil {
-			_ = helpers.InsertLogsError(conn, "movie", "Error al leer los registros")
+			_ = helpers.InsertLogsError(conn, "log_error", "Error al leer los registros")
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
-		clientes = append(clientes, cliente)
+		logs = append(logs, log)
 	}
 
-	if len(clientes) == 0 {
+	if len(logs) == 0 {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
 	}
 
-	return c.JSON(clientes)
+	return c.JSON(logs)
 
 }
 
