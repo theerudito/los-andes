@@ -323,6 +323,10 @@ func ModificarUsuario(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
+	if usuario.UsuarioId == 1 {
+		return c.Status(409).JSON(fiber.Map{"error": "no es posible modificar el usuario sistema"})
+	}
+
 	claims, err = helpers.ReadClaims(c)
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "error al leer los clains "+err.Error())
@@ -409,11 +413,21 @@ func EliminarUsuario(c *fiber.Ctx) error {
 		claims    *models.CustomClaims
 	)
 
+	id, _ := strconv.Atoi(c.Params("id"))
+
+	if id == 1 {
+		return c.Status(409).JSON(fiber.Map{"error": "no es posible eliminar el usuario sistema"})
+	}
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", "error al leer los clains "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+	}
+
 	if claims.Rol == "TECNICO" || claims.Rol == "VENDEDOR" {
 		return c.Status(409).JSON(fiber.Map{"messaje": "solo usuario administrador puenden realizar esta accion"})
 	}
-
-	id, _ := strconv.Atoi(c.Params("id"))
 
 	err = conn.QueryRow(`SELECT COUNT(*) FROM usuarios WHERE usuario_id = ?`, id).Scan(&UsuarioId)
 
@@ -524,16 +538,11 @@ func LoginUsuario(c *fiber.Ctx) error {
 
 func ResetUsuario(c *fiber.Ctx) error {
 
-	type ResetDatos struct {
-		Identificacion string `json:"identificacion"`
-		Password       string `json:"password"`
-	}
-
 	var (
 		usuarioID int
 		conn      = database.GetDB()
 		err       error
-		reset     ResetDatos
+		reset     models.UsuarioLogin
 		tx        *sql.Tx
 		passHash  string
 		claims    *models.CustomClaims
@@ -542,6 +551,16 @@ func ResetUsuario(c *fiber.Ctx) error {
 	if err = c.BodyParser(&reset); err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "Cuerpo de solicitud inválido")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cuerpo de solicitud inválido"})
+	}
+
+	err = conn.QueryRow(`SELECT usuario_id FROM usuarios WHERE identificacion = ?`, reset.Identificacion).Scan(&usuarioID)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
+	}
+
+	if usuarioID == 1 {
+		return c.Status(409).JSON(fiber.Map{"message": "no es posible modificar la contraseña de este usuario"})
 	}
 
 	claims, err = helpers.ReadClaims(c)
@@ -554,18 +573,8 @@ func ResetUsuario(c *fiber.Ctx) error {
 		return c.Status(409).JSON(fiber.Map{"messaje": "solo usuario administrador puenden realizar esta accion"})
 	}
 
-	err = conn.QueryRow(`SELECT usuario_id FROM usuarios WHERE identificacion = ?`, reset.Identificacion).Scan(&usuarioID)
-
-	if err == sql.ErrNoRows {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
-	}
-
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
-	}
-
 	tx, err = conn.Begin()
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error iniciando transacción"})
@@ -582,11 +591,10 @@ func ResetUsuario(c *fiber.Ctx) error {
 	_, err = tx.Exec(`
 		UPDATE usuarios
 		SET
-			password 					 = ?,
-			fecha_modificacion = ?
+			password 			= ?,
+			fecha_modificacion 	= ?
 		WHERE
-			usuario_id = ?
-	`,
+			usuario_id 			= ?`,
 		passHash,
 		helpers.FechaActual(),
 		usuarioID,
@@ -598,12 +606,14 @@ func ResetUsuario(c *fiber.Ctx) error {
 	}
 
 	err = tx.Commit()
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error confirmando transacción"})
 	}
 
 	err = helpers.InsertLogs(conn, "UPDATE", "usuarios", claims.Name, "contraseña actualizada correctamente")
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error insertando la auditoría"})

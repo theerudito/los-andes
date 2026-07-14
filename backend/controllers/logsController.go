@@ -24,7 +24,7 @@ func ObtenerLogsError(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	rows, err = conn.Query(`
+	query := `
 		SELECT
 			log_error_id,
 			fecha,
@@ -32,12 +32,20 @@ func ObtenerLogsError(c *fiber.Ctx) error {
 			mensaje_error
 		FROM 
 			log_error 
-		WHERE DATE(fecha) BETWEEN ? AND ?
-   		ORDER BY 
-			fecha DESC`, lg.FechaDesde, lg.FechaDesde)
+		WHERE DATE(fecha) BETWEEN ? AND ?`
 
+	args := []interface{}{lg.FechaDesde, lg.FechaHasta}
+
+	if lg.Modulo != "" {
+		query += " AND modulo = ?"
+		args = append(args, lg.Modulo)
+	}
+
+	query += " " + "ORDER" + " BY fecha DESC"
+
+	rows, err = conn.Query(query, args...)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "log_error", "Error al ejecutar la consulta")
+		_ = helpers.InsertLogsError(conn, "log_error", "Error al ejecutar la consulta: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
@@ -83,7 +91,7 @@ func ObtenerLogsOk(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
-	rows, err = conn.Query(`
+	query := `
 		SELECT
 			log_ok_id, 
 			fecha, 
@@ -93,11 +101,20 @@ func ObtenerLogsOk(c *fiber.Ctx) error {
 			descripcion	
 		FROM 
 			log_ok
-		WHERE DATE(fecha) BETWEEN ? AND ?
-    	ORDER BY 
-			fecha DESC`, lg.FechaDesde, lg.FechaDesde)
+		WHERE DATE(fecha) BETWEEN ? AND ?`
+
+	args := []interface{}{lg.FechaDesde, lg.FechaHasta}
+
+	if lg.Modulo != "" {
+		query += " AND modulo = ?"
+		args = append(args, lg.Modulo)
+	}
+
+	query += " " + "ORDER" + " BY fecha DESC"
+
+	rows, err = conn.Query(query, args...)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "logs_ok", "Error al ejecutar la consulta")
+		_ = helpers.InsertLogsError(conn, "log_ok", "Error al ejecutar la consulta: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 

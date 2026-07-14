@@ -245,7 +245,7 @@ func ModificarMarca(c *fiber.Ctx) error {
 	_, err = tx.Exec(`
 		UPDATE marcas 
 		SET nombre 							= ?,
-			fecha_modificacion 		= ?
+			fecha_modificacion 				= ?
 		WHERE 
 			marca_id 				  		= ?`,
 		strings.ToUpper(marca.Nombre),
@@ -265,6 +265,7 @@ func ModificarMarca(c *fiber.Ctx) error {
 	}
 
 	err = helpers.InsertLogs(conn, "UPDATE", "marcas", claims.Name, "registro actualizado correctamente")
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})

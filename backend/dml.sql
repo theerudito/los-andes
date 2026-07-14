@@ -39,7 +39,8 @@ VALUES
   ('TECNICO'),
   ('VENDEDOR');
 
-INSERT INTO usuarios (
+INSERT INTO
+  usuarios (
     identificacion,
     tipo_identificacion,
     nombres,
@@ -47,13 +48,14 @@ INSERT INTO usuarios (
     email,
     password,
     rol_id
-)
-VALUES (
-           '123456789',
-           'P',
-           'SISTEMA',
-           '',
-           'erudito.dev@gmail.com',
-           '60g4/J2k7ociiPUxuj7GjJfAYxAubMJxVVZQ8dr86l5BD7c=',
-           1
-       );
+  )
+VALUES
+  (
+    '123456789',
+    'P',
+    'SISTEMA',
+    '',
+    'erudito.dev@gmail.com',
+    '60g4/J2k7ociiPUxuj7GjJfAYxAubMJxVVZQ8dr86l5BD7c=',
+    1
+  );

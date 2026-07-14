@@ -38,7 +38,7 @@ CREATE TABLE
     tipo_identificacion TEXT CHECK (length (tipo_identificacion) <= 1) NOT NULL,
     nombres TEXT NOT NULL,
     apellidos TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
     password TEXT NOT NULL,
     activo INTEGER DEFAULT 1,
     rol_id INTEGER NOT NULL, -- Relación con el Rol
@@ -56,7 +56,7 @@ CREATE TABLE
     nombres TEXT NOT NULL,
     apellidos TEXT NOT NULL,
     telefono TEXT,
-    email TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
     direccion TEXT,
     fecha_creacion TEXT DEFAULT (DATETIME ('now', 'localtime')),
     fecha_modificacion TEXT DEFAULT (DATETIME ('now', 'localtime'))
