@@ -120,7 +120,7 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ya existe una entrega registrada"})
 	}
 
-	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, entrega.EquipoId).Scan(&existe)
+	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, entrega.EquipoId).Scan(&estado)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -239,14 +239,13 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 	err = tx.Commit()
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "entregas", "error confirmando transacción "+err.Error())
+		_ = helpers.InsertLogsError(conn, "entregas", "error confirming transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al confirmar la entrega"})
 	}
 
 	_ = helpers.ActualizarCodigo(conn, "O")
 
 	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente"})
-
 }
 
 func ProcesarEntregaEquipo(c *fiber.Ctx) error {

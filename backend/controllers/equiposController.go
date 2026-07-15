@@ -394,7 +394,7 @@ func CrearEquipo(c *fiber.Ctx) error {
     ) VALUES (?, ?, ?, ?, ?)`,
 		"INGRESO INICIAL: "+strings.ToUpper(equipo.Descripcion),
 		helpers.FechaActual(),
-		equipo.UsuarioId,
+		claims.UserId,
 		EquipoId,
 		1,
 	)
@@ -445,12 +445,12 @@ func CrearEquipo(c *fiber.Ctx) error {
 
 func ModificarEquipo(c *fiber.Ctx) error {
 	var (
-		EquipoId int
-		conn     = database.GetDB()
-		err      error
-		equipo   models.Equipos
-		tx       *sql.Tx
-		claims   *models.CustomClaims
+		EquipoId, tieneEntrega int
+		conn                   = database.GetDB()
+		err                    error
+		equipo                 models.Equipos
+		tx                     *sql.Tx
+		claims                 *models.CustomClaims
 	)
 
 	if err = c.BodyParser(&equipo); err != nil {
@@ -473,8 +473,8 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
 	}
 
-	var tieneEntrega int
 	err = conn.QueryRow(`SELECT COUNT(*) FROM entregas WHERE equipo_id = ?`, equipo.EquipoId).Scan(&tieneEntrega)
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error verificando entrega "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el estado de entrega"})
@@ -486,12 +486,13 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		})
 	}
 
-	// 4. Iniciar Transacción
 	tx, err = conn.Begin()
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error iniciando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
 	}
+
 	defer tx.Rollback()
 
 	_, err = tx.Exec(`
@@ -528,6 +529,7 @@ func ModificarEquipo(c *fiber.Ctx) error {
 	}
 
 	err = tx.Commit()
+
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error confirmando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
