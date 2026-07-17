@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
+	"fmt"
 	"los_andes/database"
 	"los_andes/helpers"
 	"los_andes/models"
@@ -10,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/phpdave11/gofpdf"
+	"github.com/xuri/excelize/v2"
 )
 
 func ObtenerClientes(c *fiber.Ctx) error {
@@ -261,7 +265,7 @@ func CrearCliente(c *fiber.Ctx) error {
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING cliente_id`,
 		cliente.Identificacion,
-		helpers.TipoIdentificacion(cliente.TipoIdentificacion),
+		helpers.TipoIdentificacion(cliente.Identificacion),
 		strings.ToUpper(cliente.Nombres),
 		strings.ToUpper(cliente.Apellidos),
 		cliente.Telefono,
@@ -437,4 +441,216 @@ func EliminarCliente(c *fiber.Ctx) error {
 
 	return c.Status(200).JSON(fiber.Map{"message": "registro eliminado correctamente"})
 
+}
+
+func ReporteCliente(c *fiber.Ctx) error {
+	var (
+		clientes []models.Clientes
+		req      models.ReqReportesClientes
+		conn     = database.GetDB()
+		rows     *sql.Rows
+		err      error
+	)
+
+	if err := c.BodyParser(&req); err != nil {
+	}
+
+	rows, err = conn.Query(`
+		SELECT
+			c.cliente_id,
+			c.identificacion,
+			c.tipo_identificacion,
+			c.nombres,
+			c.apellidos,
+			COALESCE(c.telefono, ''),
+			c.email,
+			COALESCE(c.direccion, ''),
+			c.fecha_creacion,
+			c.fecha_modificacion
+		FROM 
+			clientes AS c
+		WHERE 
+		     DATE (c.fecha_creacion) BETWEEN ? AND ?
+		ORDER BY 
+			c.nombres ASC`, req.Fecha_Desde, req.Fecha_Hasta)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "clientes_reporte", "Error al ejecutar la consulta: "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var cliente models.Clientes
+		err = rows.Scan(
+			&cliente.ClienteId,
+			&cliente.Identificacion,
+			&cliente.TipoIdentificacion,
+			&cliente.Nombres,
+			&cliente.Apellidos,
+			&cliente.Telefono,
+			&cliente.Email,
+			&cliente.Direccion,
+			&cliente.FechaCreacion,
+			&cliente.FechaModificacion,
+		)
+
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "clientes_reporte", "Error al leer los registros: "+err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
+		}
+
+		clientes = append(clientes, cliente)
+
+	}
+
+	if len(clientes) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
+	}
+
+	switch req.Formato {
+	// PDF con Gofpdf
+	case 1:
+
+		pdf := gofpdf.New("P", "mm", "A4", "")
+		pdf.SetMargins(10, 10, 10)
+		pdf.AddPage()
+
+		pdf.SetFont("Arial", "B", 16)
+		pdf.Cell(0, 6, "REPORTE GENERAL DE CLIENTES")
+		pdf.Ln(6)
+
+		pdf.SetFont("Arial", "I", 9)
+		pdf.Cell(0, 5, "Sistema de Gestion de Mantenimiento de Computadoras")
+		pdf.Ln(10)
+
+		pdf.Line(10, pdf.GetY(), 200, pdf.GetY())
+		pdf.Ln(1)
+
+		pdf.SetFont("Arial", "B", 10)
+
+		pdf.CellFormat(65, 6, "Nombre Completo", "B", 0, "L", false, 0, "")
+		pdf.CellFormat(35, 6, "Identificacion", "B", 0, "L", false, 0, "")
+		pdf.CellFormat(30, 6, "Telefono", "B", 0, "L", false, 0, "")
+		pdf.CellFormat(60, 6, "Email", "B", 0, "L", false, 0, "")
+		pdf.Ln(7)
+
+		pdf.SetFont("Arial", "", 9)
+
+		for _, cli := range clientes {
+			nombreCompleto := fmt.Sprintf("%s %s", cli.Nombres, cli.Apellidos)
+			identificacion := fmt.Sprintf("%s", cli.Identificacion)
+
+			pdf.CellFormat(65, 6, helpers.Limitar(nombreCompleto, 32), "", 0, "L", false, 0, "")
+			pdf.CellFormat(35, 6, identificacion, "", 0, "L", false, 0, "")
+			pdf.CellFormat(30, 6, cli.Telefono, "", 0, "L", false, 0, "")
+			pdf.CellFormat(60, 6, helpers.Limitar(cli.Email, 30), "", 0, "L", false, 0, "")
+			pdf.Ln(6)
+		}
+
+		var buf bytes.Buffer
+		err = pdf.Output(&buf)
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "clientes_reporte", "Error al procesar salida PDF: "+err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar el archivo PDF"})
+		}
+
+		c.Set("Content-Type", "application/pdf")
+		c.Set("Content-Disposition", `attachment; filename="reporte_clientes.pdf"`)
+		return c.Send(buf.Bytes())
+
+	// EXCEL
+	case 2:
+
+		f := excelize.NewFile()
+
+		defer func() {
+			if err := f.Close(); err != nil {
+				fmt.Println(err)
+			}
+		}()
+
+		sheetName := "Clientes"
+
+		index, err := f.NewSheet(sheetName)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al crear hoja de Excel"})
+		}
+
+		f.SetActiveSheet(index)
+
+		_ = f.DeleteSheet("Sheet1")
+
+		styleHeader, err := f.NewStyle(&excelize.Style{
+			Font:      &excelize.Font{Bold: true, Color: "FFFFFF", Size: 11},
+			Fill:      excelize.Fill{Type: "pattern", Color: []string{"2F4F4F"}, Pattern: 1},
+			Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+		})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error de estilos"})
+		}
+
+		styleData, err := f.NewStyle(&excelize.Style{
+			Border: []excelize.Border{
+				{Type: "left", Color: "FFFFFF", Style: 1},
+				{Type: "top", Color: "D3D3D3", Style: 1},
+				{Type: "right", Color: "D3D3D3", Style: 1},
+				{Type: "bottom", Color: "D3D3D3", Style: 1},
+			},
+		})
+
+		headers := []string{"ID Cliente", "Identificación", "Tipo Identificacion", "Nombres", "Apellidos", "Teléfono", "Email", "Dirección", "Fecha Creación"}
+		for colIdx, text := range headers {
+			cell, _ := excelize.CoordinatesToCellName(colIdx+1, 1)
+			_ = f.SetCellValue(sheetName, cell, text)
+			_ = f.SetCellStyle(sheetName, cell, cell, styleHeader)
+		}
+		_ = f.SetRowHeight(sheetName, 1, 25)
+
+		rowIdx := 2
+		for _, cli := range clientes {
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("A%d", rowIdx), cli.ClienteId)
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("B%d", rowIdx), cli.Identificacion)
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("C%d", rowIdx), cli.TipoIdentificacion)
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("D%d", rowIdx), cli.Nombres)
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("E%d", rowIdx), cli.Apellidos)
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("F%d", rowIdx), cli.Telefono)
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("G%d", rowIdx), cli.Email)
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("H%d", rowIdx), cli.Direccion)
+			_ = f.SetCellValue(sheetName, fmt.Sprintf("I%d", rowIdx), cli.FechaCreacion)
+
+			rangeCells := fmt.Sprintf("A%d:I%d", rowIdx, rowIdx)
+			_ = f.SetCellStyle(sheetName, rangeCells, rangeCells, styleData)
+			_ = f.SetRowHeight(sheetName, rowIdx, 20)
+
+			rowIdx++
+		}
+
+		cols, _ := f.GetCols(sheetName)
+		for colIdx, colCells := range cols {
+			maxLen := 0
+			for _, cellVal := range colCells {
+				if len(cellVal) > maxLen {
+					maxLen = len(cellVal)
+				}
+			}
+			colName, _ := excelize.ColumnNumberToName(colIdx + 1)
+			_ = f.SetColWidth(sheetName, colName, colName, float64(maxLen+3))
+		}
+
+		buffer, err := f.WriteToBuffer()
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "clientes_reporte", "Error al escribir Excel en Buffer: "+err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar archivo Excel"})
+		}
+
+		c.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		c.Set("Content-Disposition", `attachment; filename="reporte_clientes.xlsx"`)
+
+		return c.Send(buffer.Bytes())
+
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Formato de reporte no válido"})
+	}
 }

@@ -49,6 +49,7 @@ func SetupRoutes(app *fiber.App) {
 	protectedClientes.Post("/", controllers.CrearCliente)
 	protectedClientes.Put("/", controllers.ModificarCliente)
 	protectedClientes.Delete("/:id", controllers.EliminarCliente)
+	protectedClientes.Post("/reportes", controllers.ReporteCliente)
 
 	// marca
 	protectedMarcas := v1.Group("/marca", helpers.JWTMiddleware())
