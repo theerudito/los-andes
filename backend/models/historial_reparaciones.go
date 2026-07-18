@@ -26,3 +26,8 @@ type HistorialReparacionesDTO struct {
 	Nombres_Cliente   string `json:"nombres_cliente"`
 	Apellidos_Cliente string `json:"apellidos_cliente"`
 }
+
+type ReqReportesHistorial struct {
+	Fecha_Desde string `json:"fecha_desde"`
+	Fecha_Hasta string `json:"fecha_hasta"`
+}

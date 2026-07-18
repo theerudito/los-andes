@@ -33,7 +33,7 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 	rows, err = conn.Query(`
     SELECT 
       en.entrega_id,
-      en.fecha_entrega,
+      COALESCE(strftime('%d/%m/%Y %H:%M:%S', en.fecha_entrega), '') AS fecha_entrega,
       en.trabajos_realizados,
       en.estado_final_equipo,
       en.conformidad_cliente,

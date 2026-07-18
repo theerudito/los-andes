@@ -44,3 +44,8 @@ type EquiposDTO struct {
 	Nombres   string `json:"nombres"`
 	Apellidos string `json:"apellidos"`
 }
+
+type ReqReportesEquipos struct {
+	Fecha_Desde string `json:"fecha_desde"`
+	Fecha_Hasta string `json:"fecha_hasta"`
+}

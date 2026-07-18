@@ -26,8 +26,8 @@ func ObtenerMarcas(c *fiber.Ctx) error {
 		SELECT
 			m.marca_id,
 			m.nombre,
-			m.fecha_creacion,
-      m.fecha_modificacion
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', m.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', m.fecha_modificacion), '') AS fecha_modificacion
 		FROM 
 			marcas AS m
     ORDER BY 
@@ -81,8 +81,8 @@ func ObtenerMarca(c *fiber.Ctx) error {
 		SELECT
 			m.marca_id,
 			m.nombre,
-			m.fecha_creacion,
-      m.fecha_modificacion
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', m.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', m.fecha_modificacion), '') AS fecha_modificacion
 		FROM 
 			marcas AS m
 		WHERE 

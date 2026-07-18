@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/phpdave11/gofpdf"
 )
 
 func ObtenerEquipos(c *fiber.Ctx) error {
@@ -25,24 +27,24 @@ func ObtenerEquipos(c *fiber.Ctx) error {
 	rows, err = conn.Query(`
 		SELECT
 			e.equipo_id,
-			e.codigo,
-			e.tipo_equipo,
-			e.modelo,
-			e.numero_serie,
-			e.accesorios,
-			e.descripcion_problema,
-			e.observacion,
-			e.fecha_recepcion,
-      e.fecha_estimada_entrega,
-			e.fecha_creacion,
-      e.fecha_modificacion,
-			m.marca_id,
-			m.nombre AS marca,
-			c.cliente_id,
-			c.nombres,
-			c.apellidos,
-			r.estado_id,
-			r.nombre As estado
+			COALESCE(e.codigo, '') AS codigo,
+			COALESCE(e.tipo_equipo, '') AS tipo_equipo,
+			COALESCE(e.modelo, '') AS modelo,
+			COALESCE(e.numero_serie, '') AS numero_serie,
+			COALESCE(e.accesorios, '') AS accesorios,
+			COALESCE(e.descripcion_problema, '') AS descripcion_problema,
+			COALESCE(e.observacion, '') AS observacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_recepcion), '') AS fecha_recepcion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_estimada_entrega), '') AS fecha_estimada_entrega,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_modificacion), '') AS fecha_modificacion,
+			COALESCE(m.marca_id, 0) AS marca_id,
+			COALESCE(m.nombre, '') AS marca,
+			COALESCE(c.cliente_id, 0) AS cliente_id,
+			COALESCE(c.nombres, '') AS nombres,
+			COALESCE(c.apellidos, '') AS apellidos,
+			COALESCE(r.estado_id, 0) AS estado_id,
+			COALESCE(r.nombre, '') AS r_nombre
 		FROM 
 			equipos AS e
 		INNER JOIN clientes AS c ON e.cliente_id = c.cliente_id
@@ -108,24 +110,24 @@ func ObtenerEquipo(c *fiber.Ctx) error {
 	rows, err = conn.Query(`
 		SELECT
 			e.equipo_id,
-			e.codigo,
-			e.tipo_equipo,
-			e.modelo,
-			e.numero_serie,
-			e.accesorios,
-			e.descripcion_problema,
-			e.observacion,
-			e.fecha_recepcion,
-      e.fecha_estimada_entrega,
-			e.fecha_creacion,
-      e.fecha_modificacion,
-			m.marca_id,
-			m.nombre AS marca,
-			c.cliente_id,
-			c.nombres,
-			c.apellidos,
-			r.estado_id,
-			r.nombre As estado
+			COALESCE(e.codigo, '') AS codigo,
+			COALESCE(e.tipo_equipo, '') AS tipo_equipo,
+			COALESCE(e.modelo, '') AS modelo,
+			COALESCE(e.numero_serie, '') AS numero_serie,
+			COALESCE(e.accesorios, '') AS accesorios,
+			COALESCE(e.descripcion_problema, '') AS descripcion_problema,
+			COALESCE(e.observacion, '') AS observacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_recepcion), '') AS fecha_recepcion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_estimada_entrega), '') AS fecha_estimada_entrega,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_modificacion), '') AS fecha_modificacion,
+			COALESCE(m.marca_id, 0) AS marca_id,
+			COALESCE(m.nombre, '') AS marca,
+			COALESCE(c.cliente_id, 0) AS cliente_id,
+			COALESCE(c.nombres, '') AS nombres,
+			COALESCE(c.apellidos, '') AS apellidos,
+			COALESCE(r.estado_id, 0) AS estado_id,
+			COALESCE(r.nombre, '') AS r_nombre
 		FROM 
 			equipos AS e
 		INNER JOIN clientes AS c ON e.cliente_id = c.cliente_id
@@ -196,24 +198,24 @@ func ObtenerEquipoPorTipo(c *fiber.Ctx) error {
 	baseQuery := `
 		SELECT
 			e.equipo_id,
-			e.codigo,
-			e.tipo_equipo,
-			COALESCE(e.modelo, ''),
-			COALESCE(e.numero_serie, ''),
-			COALESCE(e.accesorios, ''),
-			e.descripcion_problema,
-			COALESCE(e.observacion, ''),
-			COALESCE(e.fecha_recepcion, ''),
-			COALESCE(e.fecha_estimada_entrega, ''),
-			e.fecha_creacion,
-			e.fecha_modificacion,
-			m.marca_id,
-			m.nombre AS marca,
-			c.cliente_id,
-			c.nombres,
-			c.apellidos,
-			r.estado_id,
-			r.nombre AS estado
+			COALESCE(e.codigo, '') AS codigo,
+			COALESCE(e.tipo_equipo, '') AS tipo_equipo,
+			COALESCE(e.modelo, '') AS modelo,
+			COALESCE(e.numero_serie, '') AS numero_serie,
+			COALESCE(e.accesorios, '') AS accesorios,
+			COALESCE(e.descripcion_problema, '') AS descripcion_problema,
+			COALESCE(e.observacion, '') AS observacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_recepcion), '') AS fecha_recepcion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_estimada_entrega), '') AS fecha_estimada_entrega,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_modificacion), '') AS fecha_modificacion,
+			COALESCE(m.marca_id, 0) AS marca_id,
+			COALESCE(m.nombre, '') AS marca,
+			COALESCE(c.cliente_id, 0) AS cliente_id,
+			COALESCE(c.nombres, '') AS nombres,
+			COALESCE(c.apellidos, '') AS apellidos,
+			COALESCE(r.estado_id, 0) AS estado_id,
+			COALESCE(r.nombre, '') AS r_nombre
 		FROM 
 			equipos AS e
 		INNER JOIN clientes AS c ON e.cliente_id = c.cliente_id
@@ -638,5 +640,156 @@ func EliminarEquipo(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(fiber.Map{"message": "registro eliminados correctamente"})
+
+}
+
+func ReporteEquipos(c *fiber.Ctx) error {
+	var (
+		req     models.ReqReportesEquipos
+		equipos []models.EquiposDTO
+		equipo  models.EquiposDTO
+		conn    = database.GetDB()
+		rows    *sql.Rows
+		err     error
+	)
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Error al procesar los parámetros de entrada"})
+	}
+
+	query := `
+		SELECT
+			e.equipo_id,
+			COALESCE(e.codigo, '') AS codigo,
+			COALESCE(e.tipo_equipo, '') AS tipo_equipo,
+			COALESCE(e.modelo, '') AS modelo,
+			COALESCE(e.numero_serie, '') AS numero_serie,
+			COALESCE(e.accesorios, '') AS accesorios,
+			COALESCE(e.descripcion_problema, '') AS descripcion_problema,
+			COALESCE(e.observacion, '') AS observacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_recepcion), '') AS fecha_recepcion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_estimada_entrega), '') AS fecha_estimada_entrega,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_modificacion), '') AS fecha_modificacion,
+			COALESCE(m.marca_id, 0) AS marca_id,
+			COALESCE(m.nombre, '') AS marca,
+			COALESCE(c.cliente_id, 0) AS cliente_id,
+			COALESCE(c.nombres, '') AS nombres,
+			COALESCE(c.apellidos, '') AS apellidos,
+			COALESCE(r.estado_id, 0) AS estado_id,
+			COALESCE(r.nombre, '') AS r_nombre
+		FROM 
+			equipos AS e
+		INNER JOIN clientes AS c ON e.cliente_id = c.cliente_id
+		INNER JOIN marcas m ON e.marca_id = m.marca_id
+		INNER JOIN estados_reparacion r ON e.estado_id = r.estado_id
+		WHERE 
+			DATE (e.fecha_recepcion) BETWEEN ? AND ?`
+
+	args := []any{req.Fecha_Desde, req.Fecha_Hasta}
+
+	/*if lg.Modulo != "" {
+		query += " AND modulo = ?"
+		args = append(args, lg.Modulo)
+	}*/
+
+	query += "ORDER BY e.equipo_id DESC"
+
+	rows, err = conn.Query(query, args...)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "log_error", "Error al ejecutar la consulta: "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&equipo.EquipoId,
+			&equipo.Codigo,
+			&equipo.TipoEquipo,
+			&equipo.Modelo,
+			&equipo.NumeroSerie,
+			&equipo.Accesorios,
+			&equipo.Descripcion,
+			&equipo.Observacion,
+			&equipo.FechaRecepcion,
+			&equipo.FechaEstimadaEntrega,
+			&equipo.FechaCreacion,
+			&equipo.FechaModificacion,
+			&equipo.MarcaId,
+			&equipo.Marca,
+			&equipo.ClienteId,
+			&equipo.Nombres,
+			&equipo.Apellidos,
+			&equipo.EstadoId,
+			&equipo.Estado)
+
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "equipos", "Error al leer los registros: "+err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
+		}
+
+		equipos = append(equipos, equipo)
+	}
+
+	if len(equipos) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros para el rango de fechas asignado"})
+	}
+
+	pdf := gofpdf.New("L", "mm", "A4", "")
+	pdf.SetMargins(10, 10, 10)
+	pdf.AddPage()
+
+	pdf.SetFont("Arial", "B", 16)
+	pdf.Cell(0, 6, "REPORTE GENERAL DE EQUIPOS EN SOPORTE")
+	pdf.Ln(6)
+
+	pdf.SetFont("Arial", "I", 9)
+	pdf.Cell(0, 5, "Sistema de Gestion de Mantenimiento de Computadoras")
+	pdf.Ln(5)
+
+	pdf.SetFont("Arial", "", 9)
+	pdf.Cell(0, 5, fmt.Sprintf("Filtro desde: %s hasta %s", req.Fecha_Desde, req.Fecha_Hasta))
+	pdf.Ln(10)
+
+	pdf.Line(10, pdf.GetY(), 287, pdf.GetY())
+	pdf.Ln(2)
+
+	pdf.SetFont("Arial", "B", 10)
+	pdf.CellFormat(25, 6, "Codigo", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(30, 6, "Tipo Equipo", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(30, 6, "Marca", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(35, 6, "Modelo", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(65, 6, "Cliente", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(32, 6, "F. Recepcion", "B", 0, "C", false, 0, "")
+	pdf.CellFormat(60, 6, "Estado", "B", 0, "L", false, 0, "")
+	pdf.Ln(7)
+
+	pdf.SetFont("Arial", "", 9)
+	for _, eq := range equipos {
+		clienteCompleto := fmt.Sprintf("%s %s", eq.Nombres, eq.Apellidos)
+
+		pdf.CellFormat(25, 6, eq.Codigo, "", 0, "L", false, 0, "")
+		pdf.CellFormat(30, 6, helpers.Limitar(eq.TipoEquipo, 15), "", 0, "L", false, 0, "")
+		pdf.CellFormat(30, 6, helpers.Limitar(eq.Marca, 15), "", 0, "L", false, 0, "")
+		pdf.CellFormat(35, 6, helpers.Limitar(eq.Modelo, 18), "", 0, "L", false, 0, "")
+		pdf.CellFormat(65, 6, helpers.Limitar(clienteCompleto, 34), "", 0, "L", false, 0, "")
+		pdf.CellFormat(32, 6, eq.FechaRecepcion, "", 0, "C", false, 0, "")
+		pdf.CellFormat(60, 6, helpers.Limitar(eq.Estado, 20), "", 0, "L", false, 0, "")
+		pdf.Ln(6)
+	}
+
+	var buf bytes.Buffer
+	err = pdf.Output(&buf)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "Error al procesar salida PDF: "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar el archivo PDF"})
+	}
+
+	c.Set("Content-Type", "application/pdf")
+	c.Set("Content-Disposition", `attachment; filename="reporte_equipos.pdf"`)
+	return c.Send(buf.Bytes())
 
 }

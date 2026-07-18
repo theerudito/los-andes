@@ -32,8 +32,8 @@ func ObtenerUsuarios(c *fiber.Ctx) error {
 			u.email,
 			u.activo,
 			u.rol_id,
-			u.fecha_creacion,
-      u.fecha_modificacion
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', u.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', u.fecha_modificacion), '') AS fecha_modificacion
 		FROM 
 			usuarios AS u
     ORDER BY 
@@ -96,8 +96,8 @@ func ObtenerUsuario(c *fiber.Ctx) error {
 			u.email,
 			u.activo,
 			u.rol_id,
-			u.fecha_creacion,
-      u.fecha_modificacion
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', u.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', u.fecha_modificacion), '') AS fecha_modificacion
 		FROM 
 			usuarios AS u
 		WHERE 
@@ -161,8 +161,8 @@ func ObtenerUsuarioPorIdentificacion(c *fiber.Ctx) error {
 			u.email,
 			u.activo,
 			u.rol_id,
-			u.fecha_creacion,
-      u.fecha_modificacion
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', u.fecha_creacion), '') AS fecha_creacion,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', u.fecha_modificacion), '') AS fecha_modificacion
 		FROM 
 			usuarios AS u
 		WHERE 

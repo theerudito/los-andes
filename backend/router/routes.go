@@ -72,6 +72,7 @@ func SetupRoutes(app *fiber.App) {
 	protectedEquipos.Post("/", controllers.CrearEquipo)
 	protectedEquipos.Put("/", controllers.ModificarEquipo)
 	protectedEquipos.Delete("/:id", controllers.EliminarEquipo)
+	protectedEquipos.Post("/reportes", controllers.ReporteEquipos)
 
 	// historial
 	protectedHistorial := v1.Group("/historial", helpers.JWTMiddleware())

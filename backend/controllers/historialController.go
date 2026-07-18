@@ -42,7 +42,7 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 		SELECT
 			h.historial_id,
 			h.observaciones_tecnicas,
-			h.fecha,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', h.fecha), '') AS fecha,
 			e.equipo_id,
 			e.tipo_equipo,
 			e.numero_serie,

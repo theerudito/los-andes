@@ -27,14 +27,14 @@ func ObtenerLogsError(c *fiber.Ctx) error {
 	query := `
 		SELECT
 			log_error_id,
-			fecha,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', fecha), '') AS fecha,
 			modulo,
 			mensaje_error
 		FROM 
 			log_error 
 		WHERE DATE(fecha) BETWEEN ? AND ?`
 
-	args := []interface{}{lg.FechaDesde, lg.FechaHasta}
+	args := []any{lg.FechaDesde, lg.FechaHasta}
 
 	if lg.Modulo != "" {
 		query += " AND modulo = ?"
@@ -94,7 +94,7 @@ func ObtenerLogsOk(c *fiber.Ctx) error {
 	query := `
 		SELECT
 			log_ok_id, 
-			fecha, 
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', fecha), '') AS fecha,
 			modulo, 
 			usuario, 
 			accion, 
@@ -103,7 +103,7 @@ func ObtenerLogsOk(c *fiber.Ctx) error {
 			log_ok
 		WHERE DATE(fecha) BETWEEN ? AND ?`
 
-	args := []interface{}{lg.FechaDesde, lg.FechaHasta}
+	args := []any{lg.FechaDesde, lg.FechaHasta}
 
 	if lg.Modulo != "" {
 		query += " AND modulo = ?"

@@ -28,3 +28,8 @@ type EntregaEquipo struct {
 	ComprobanteNro     string `json:"comprobante_nro"`
 	Observaciones      string `json:"observaciones"`
 }
+
+type ReqReportesEntregas struct {
+	Fecha_Desde string `json:"fecha_desde"`
+	Fecha_Hasta string `json:"fecha_hasta"`
+}
