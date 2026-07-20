@@ -1,5 +1,7 @@
 package models
 
+import "database/sql"
+
 type Equipos struct {
 	EquipoId             int    `json:"equipo_id"`
 	Codigo               string `json:"codigo"`
@@ -48,4 +50,25 @@ type EquiposDTO struct {
 type ReqReportesEquipos struct {
 	Fecha_Desde string `json:"fecha_desde"`
 	Fecha_Hasta string `json:"fecha_hasta"`
+}
+
+type ReqOrdenIngresoData struct {
+	Codigo               string
+	TipoEquipo           string
+	Modelo               sql.NullString
+	NumeroSerie          sql.NullString
+	Accesorios           sql.NullString
+	DescripcionProblema  string
+	Observacion          sql.NullString
+	FechaRecepcion       sql.NullString
+	FechaEstimadaEntrega sql.NullString
+	Marca                string
+	Estado               string
+
+	ClienteIdentificacion string
+	ClienteNombres        string
+	ClienteApellidos      string
+	ClienteTelefono       sql.NullString
+	ClienteEmail          string
+	ClienteDireccion      sql.NullString
 }

@@ -28,7 +28,6 @@ INSERT INTO
 VALUES
   ('C', 6, 1, 1),
   ('E', 6, 1, 1),
-  ('T', 6, 1, 1),
   ('O', 6, 1, 1);
 
 INSERT INTO

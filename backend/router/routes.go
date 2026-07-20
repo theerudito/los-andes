@@ -67,6 +67,7 @@ func SetupRoutes(app *fiber.App) {
 	// equipos
 	protectedEquipos := v1.Group("/equipo", helpers.JWTMiddleware())
 	protectedEquipos.Get("/", controllers.ObtenerEquipos)
+	protectedEquipos.Get("/orden-ingreso/:id", controllers.OrdenIngreso)
 	protectedEquipos.Get("/:id", controllers.ObtenerEquipo)
 	protectedEquipos.Get("/:tipo/:valor", controllers.ObtenerEquipoPorTipo)
 	protectedEquipos.Post("/", controllers.CrearEquipo)
@@ -78,6 +79,7 @@ func SetupRoutes(app *fiber.App) {
 	protectedHistorial := v1.Group("/historial", helpers.JWTMiddleware())
 	protectedHistorial.Get("/:id", controllers.ConsultarHistorialEquipo)
 	protectedHistorial.Put("/", controllers.ActualizarEstadoEquipo)
+	protectedHistorial.Post("/reportes", controllers.ReporteHistorial)
 
 	// pagos
 	protectedPagos := v1.Group("/pago", helpers.JWTMiddleware())
@@ -87,8 +89,9 @@ func SetupRoutes(app *fiber.App) {
 
 	// entregas
 	protectedEntregas := v1.Group("/entrega", helpers.JWTMiddleware())
-	protectedEntregas.Get("/:id", controllers.ConsultarEntregaPorEquipo)
 	protectedEntregas.Post("/", controllers.RegistrarEntrega)
+	protectedEntregas.Get("/orden-entrega/:id", controllers.OrdenEntrega)
+	protectedEntregas.Get("/:id", controllers.ConsultarEntregaPorEquipo)
 
 	// logs error
 	protectedLogsError := v1.Group("/logs-error", helpers.JWTMiddleware())

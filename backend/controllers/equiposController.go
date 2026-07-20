@@ -341,7 +341,7 @@ func CrearEquipo(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
-	codigo, err = helpers.ObtenerCodigo(conn, "E")
+	codigo, err = helpers.ObtenerCodigo(conn, "O")
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error obteniendo el codigo "+err.Error())
@@ -792,4 +792,185 @@ func ReporteEquipos(c *fiber.Ctx) error {
 	c.Set("Content-Disposition", `attachment; filename="reporte_equipos.pdf"`)
 	return c.Send(buf.Bytes())
 
+}
+
+func OrdenIngreso(c *fiber.Ctx) error {
+	var (
+		data models.ReqOrdenIngresoData
+		conn = database.GetDB()
+		id   = c.Params("id")
+	)
+
+	equipoID, err := strconv.Atoi(id)
+	if err != nil || equipoID <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID de equipo no valido"})
+	}
+
+	query := `
+		SELECT 
+			COALESCE(e.codigo, '') AS codigo,
+			COALESCE(e.tipo_equipo, '') AS tipo_equipo,
+			COALESCE(e.modelo, '') AS modelo,
+			COALESCE(e.numero_serie, '') AS numero_serie,
+			COALESCE(e.accesorios, '') AS accesorios,
+			COALESCE(e.descripcion_problema, '') AS descripcion_problema,
+			COALESCE(e.observacion, '') AS observacion,
+			COALESCE(strftime('%d/%m/%Y', e.fecha_recepcion), '') AS fecha_recepcion,
+			COALESCE(strftime('%d/%m/%Y', e.fecha_estimada_entrega), '') AS fecha_estimada_entrega,
+			COALESCE(m.nombre, '') AS marca,
+			COALESCE(est.nombre, '') AS estado,
+			COALESCE(c.identificacion, '') AS identificacion,
+			COALESCE(c.nombres, '') AS nombres,
+			COALESCE(c.apellidos, '') AS apellidos,
+			COALESCE(c.telefono, '') AS telefono,
+			COALESCE(c.email, '') AS email,
+			COALESCE(c.direccion, '') AS direccion
+		FROM equipos e
+		INNER JOIN clientes c ON e.cliente_id = c.cliente_id
+		INNER JOIN marcas m ON e.marca_id = m.marca_id
+		INNER JOIN estados_reparacion est ON e.estado_id = est.estado_id
+		WHERE e.equipo_id = ?;`
+
+	err = conn.QueryRow(query, equipoID).Scan(
+		&data.Codigo,
+		&data.TipoEquipo,
+		&data.Modelo,
+		&data.NumeroSerie,
+		&data.Accesorios,
+		&data.DescripcionProblema,
+		&data.Observacion,
+		&data.FechaRecepcion,
+		&data.FechaEstimadaEntrega,
+		&data.Marca,
+		&data.Estado,
+		&data.ClienteIdentificacion,
+		&data.ClienteNombres,
+		&data.ClienteApellidos,
+		&data.ClienteTelefono,
+		&data.ClienteEmail,
+		&data.ClienteDireccion,
+	)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Equipo no encontrado"})
+	} else if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos_reporte", "Error al consultar orden de ingreso: "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al consultar los datos del equipo"})
+	}
+
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(15, 15, 15)
+	pdf.AddPage()
+
+	pdf.SetFont("Arial", "B", 16)
+	pdf.CellFormat(110, 7, "ORDEN DE INGRESO / RECEPCION", "", 0, "L", false, 0, "")
+	pdf.SetFont("Arial", "B", 14)
+	pdf.CellFormat(70, 7, fmt.Sprintf("ORDEN: %s", data.Codigo), "1", 1, "C", false, 0, "")
+
+	pdf.SetFont("Arial", "I", 9)
+	pdf.Cell(0, 5, "Sistema de Gestion de Mantenimiento de Computadoras")
+	pdf.Ln(8)
+
+	pdf.Line(15, pdf.GetY(), 195, pdf.GetY())
+	pdf.Ln(4)
+
+	pdf.SetFont("Arial", "B", 11)
+	pdf.SetFillColor(230, 230, 230)
+	pdf.CellFormat(180, 6, " 1. INFORMACION DEL CLIENTE", "1", 1, "L", true, 0, "")
+
+	pdf.SetFont("Arial", "", 9)
+	nombreCliente := fmt.Sprintf("%s %s", data.ClienteNombres, data.ClienteApellidos)
+	pdf.CellFormat(30, 6, "Cliente:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(150, 6, helpers.Limitar(nombreCliente, 60), "R", 1, "L", false, 0, "")
+
+	pdf.CellFormat(30, 6, "Identificacion:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(60, 6, data.ClienteIdentificacion, "", 0, "L", false, 0, "")
+	pdf.CellFormat(25, 6, "Telefono:", "", 0, "L", false, 0, "")
+	pdf.CellFormat(65, 6, data.ClienteTelefono.String, "R", 1, "L", false, 0, "")
+
+	pdf.CellFormat(30, 6, "Email:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(150, 6, data.ClienteEmail, "R", 1, "L", false, 0, "")
+
+	pdf.CellFormat(30, 6, "Direccion:", "L,B", 0, "L", false, 0, "")
+	pdf.CellFormat(150, 6, helpers.Limitar(data.ClienteDireccion.String, 65), "R,B", 1, "L", false, 0, "")
+
+	pdf.Ln(5)
+
+	pdf.SetFont("Arial", "B", 11)
+	pdf.CellFormat(180, 6, " 2. DATOS Y ESTADO DEL EQUIPO", "1", 1, "L", true, 0, "")
+
+	pdf.SetFont("Arial", "", 9)
+
+	pdf.CellFormat(30, 6, "Tipo Equipo:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(55, 6, data.TipoEquipo, "", 0, "L", false, 0, "")
+	pdf.CellFormat(35, 6, "Marca:", "", 0, "L", false, 0, "")
+	pdf.CellFormat(60, 6, data.Marca, "R", 1, "L", false, 0, "")
+
+	pdf.CellFormat(30, 6, "Modelo:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(55, 6, data.Modelo.String, "", 0, "L", false, 0, "")
+	pdf.CellFormat(35, 6, "Numero de Serie:", "", 0, "L", false, 0, "")
+	pdf.CellFormat(60, 6, data.NumeroSerie.String, "R", 1, "L", false, 0, "")
+
+	pdf.CellFormat(30, 6, "Fecha Recepcion:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(55, 6, data.FechaRecepcion.String, "", 0, "L", false, 0, "")
+	pdf.CellFormat(35, 6, "Fecha Estimada:", "", 0, "L", false, 0, "")
+	pdf.CellFormat(60, 6, data.FechaEstimadaEntrega.String, "R", 1, "L", false, 0, "")
+
+	pdf.CellFormat(30, 6, "Estado Inicial:", "L,B", 0, "L", false, 0, "")
+	pdf.CellFormat(150, 6, data.Estado, "R,B", 1, "L", false, 0, "")
+
+	pdf.Ln(5)
+
+	pdf.SetFont("Arial", "B", 11)
+	pdf.CellFormat(180, 6, " 3. ACCESORIOS Y PROBLEMA REPORTADO", "1", 1, "L", true, 0, "")
+
+	pdf.SetFont("Arial", "B", 9)
+	pdf.CellFormat(180, 5, "Accesorios Entregados:", "L,R", 1, "L", false, 0, "")
+	pdf.SetFont("Arial", "", 9)
+	txtAccesorios := data.Accesorios.String
+	if txtAccesorios == "" {
+		txtAccesorios = "Ninguno"
+	}
+	pdf.MultiCell(180, 5, txtAccesorios, "L,R,B", "L", false)
+
+	pdf.SetFont("Arial", "B", 9)
+	pdf.CellFormat(180, 5, "Descripcion del Problema:", "L,R", 1, "L", false, 0, "")
+	pdf.SetFont("Arial", "", 9)
+	pdf.MultiCell(180, 5, data.DescripcionProblema, "L,R,B", "L", false)
+
+	if data.Observacion.Valid && data.Observacion.String != "" {
+		pdf.SetFont("Arial", "B", 9)
+		pdf.CellFormat(180, 5, "Observaciones Adicionales:", "L,R", 1, "L", false, 0, "")
+		pdf.SetFont("Arial", "", 9)
+		pdf.MultiCell(180, 5, data.Observacion.String, "L,R,B", "L", false)
+	}
+
+	pdf.Ln(12)
+
+	pdf.SetFont("Arial", "I", 8)
+	pdf.MultiCell(180, 4, "Nota: El taller no se hace responsable por la informacion contenida en los discos duros ni por fallas ocultas no descritas en este documento. Pasados los 30 dias de notificada la reparacion, los equipos no retirados podran generar costo de bodegaje.", "", "C", false)
+
+	pdf.Ln(25)
+
+	yFirmas := pdf.GetY()
+	pdf.Line(25, yFirmas, 85, yFirmas)
+	pdf.Line(110, yFirmas, 170, yFirmas)
+
+	pdf.SetFont("Arial", "B", 9)
+	pdf.SetXY(25, yFirmas+2)
+	pdf.CellFormat(60, 5, "Firma del Cliente", "", 0, "C", false, 0, "")
+
+	pdf.SetXY(110, yFirmas+2)
+	pdf.CellFormat(60, 5, "Firma del Usuario / Tecnico", "", 1, "C", false, 0, "")
+
+	var buf bytes.Buffer
+	err = pdf.Output(&buf)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos_reporte", "Error al procesar PDF de Orden de Ingreso: "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar el comprobante PDF"})
+	}
+
+	c.Set("Content-Type", "application/pdf")
+	c.Set("Content-Disposition", fmt.Sprintf(`inline; filename="orden_ingreso_%s.pdf"`, data.Codigo))
+	return c.Send(buf.Bytes())
 }

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/phpdave11/gofpdf"
 )
 
 func ConsultarHistorialEquipo(c *fiber.Ctx) error {
@@ -236,4 +238,160 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 
 	return c.Status(200).JSON(fiber.Map{"message": "registro actualizado correctamente"})
 
+}
+
+func ReporteHistorial(c *fiber.Ctx) error {
+	var (
+		req          models.ReqReportesHistorial
+		conn         = database.GetDB()
+		historiales  []models.HistorialReparacionesDTO
+		args         []any
+		whereClauses []string
+	)
+
+	if err := c.BodyParser(&req); err != nil {
+		_ = helpers.InsertLogsError(conn, "historial_reporte", "El contenido del json es incorrecto: "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
+	}
+
+	queryBase := `
+		SELECT
+			h.historial_id,
+			COALESCE(h.observaciones_tecnicas, '') AS observaciones_tecnicas,
+			COALESCE(strftime('%d/%m/%Y %H:%M:%S', h.fecha), '') AS fecha,
+			e.equipo_id,
+			e.tipo_equipo,
+			COALESCE(e.numero_serie, 'S/N') AS numero_serie,
+			r.nombre AS estado,
+			r.estado_id,
+			COALESCE(u.usuario_id, 0) AS usuario_id,
+			COALESCE(u.nombres, 'N/A') AS usuario_nombres,
+			COALESCE(u.apellidos, '') AS usuario_apellidos,
+			c.cliente_id,
+			c.nombres AS cliente_nombres,
+			c.apellidos AS cliente_apellidos
+		FROM historial_reparaciones h
+			INNER JOIN equipos e ON h.equipo_id = e.equipo_id
+			INNER JOIN clientes c ON e.cliente_id = c.cliente_id
+			INNER JOIN estados_reparacion r ON h.estado_id = r.estado_id
+			LEFT JOIN usuarios u ON h.usuario_id = u.usuario_id`
+
+	if req.ClienteId > 0 {
+		whereClauses = append(whereClauses, "c.cliente_id = ?")
+		args = append(args, req.ClienteId)
+	}
+
+	if req.EquipoID > 0 {
+		whereClauses = append(whereClauses, "e.equipo_id = ?")
+		args = append(args, req.EquipoID)
+	}
+
+	if req.EstadoID >= 1 && req.EstadoID <= 6 {
+		whereClauses = append(whereClauses, "h.estado_id = ?")
+		args = append(args, req.EstadoID)
+	}
+
+	if req.Fecha_Desde != "" && req.Fecha_Hasta != "" {
+		whereClauses = append(whereClauses, "DATE(h.fecha) BETWEEN ? AND ?")
+		args = append(args, req.Fecha_Desde, req.Fecha_Hasta)
+	}
+
+	if len(whereClauses) > 0 {
+		queryBase += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	queryBase += " ORDER BY h.fecha DESC"
+
+	rows, err := conn.Query(queryBase, args...)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial_reporte", "Error al ejecutar la consulta: "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var h models.HistorialReparacionesDTO
+		err = rows.Scan(
+			&h.HistorialId,
+			&h.ObservacionesTecnicas,
+			&h.Fecha,
+			&h.EquipoId,
+			&h.Equipo,
+			&h.Serie,
+			&h.Estado,
+			&h.EstadoId,
+			&h.UsuarioId,
+			&h.Nombres_Usuario,
+			&h.Apellidos_Usuario,
+			&h.ClienteId,
+			&h.Nombres_Cliente,
+			&h.Apellidos_Cliente,
+		)
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "historial_reporte", "Error al leer los registros: "+err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
+		}
+		historiales = append(historiales, h)
+	}
+
+	if len(historiales) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
+	}
+
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(10, 10, 10)
+	pdf.AddPage()
+
+	pdf.SetFont("Arial", "B", 16)
+	pdf.Cell(0, 6, "REPORTE GENERAL DE HISTORIAL")
+	pdf.Ln(6)
+
+	pdf.SetFont("Arial", "I", 9)
+	pdf.Cell(0, 5, "Sistema de Gestion de Mantenimiento de Computadoras")
+	pdf.Ln(10)
+
+	pdf.Line(10, pdf.GetY(), 200, pdf.GetY())
+	pdf.Ln(1)
+
+	pdf.SetFont("Arial", "B", 10)
+
+	pdf.CellFormat(32, 6, "Fecha / Hora", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(40, 6, "Cliente", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(30, 6, "Equipo", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(28, 6, "Estado", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(60, 6, "Observaciones / Tecnico", "B", 0, "L", false, 0, "")
+	pdf.Ln(7)
+
+	pdf.SetFont("Arial", "", 9)
+
+	for _, item := range historiales {
+		cliente := fmt.Sprintf("%s %s", item.Nombres_Cliente, item.Apellidos_Cliente)
+		tecnico := fmt.Sprintf("%s %s", item.Nombres_Usuario, item.Apellidos_Usuario)
+		if strings.TrimSpace(tecnico) == "" {
+			tecnico = "Sistema"
+		}
+
+		obsTecnico := fmt.Sprintf("%s (Tec: %s)", item.ObservacionesTecnicas, tecnico)
+		if item.ObservacionesTecnicas == "" {
+			obsTecnico = fmt.Sprintf("Sin obs. (Tec: %s)", tecnico)
+		}
+
+		pdf.CellFormat(32, 6, item.Fecha, "", 0, "L", false, 0, "")
+		pdf.CellFormat(40, 6, helpers.Limitar(cliente, 22), "", 0, "L", false, 0, "")
+		pdf.CellFormat(30, 6, helpers.Limitar(item.Equipo, 16), "", 0, "L", false, 0, "")
+		pdf.CellFormat(28, 6, helpers.Limitar(item.Estado, 15), "", 0, "L", false, 0, "")
+		pdf.CellFormat(60, 6, helpers.Limitar(obsTecnico, 35), "", 0, "L", false, 0, "")
+		pdf.Ln(6)
+	}
+
+	var buf bytes.Buffer
+	err = pdf.Output(&buf)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial_reporte", "Error al procesar salida PDF: "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar el archivo PDF"})
+	}
+
+	c.Set("Content-Type", "application/pdf")
+	c.Set("Content-Disposition", `attachment; filename="reporte_historial.pdf"`)
+	return c.Send(buf.Bytes())
 }
