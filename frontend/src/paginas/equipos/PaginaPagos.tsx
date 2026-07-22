@@ -7,13 +7,12 @@ import {
     FileText,
     ArrowLeft,
     CreditCard,
-    Laptop,
-    X,
     CheckCircle2,
-    Clock
+    Clock, PrinterCheck
 } from 'lucide-react';
+import { useModal } from '../../store/useModal.ts';
+import { ModalLista } from '../../helpers/ModalLista.ts';
 
-// Interface 1:1 con tu API de Go
 export interface CuentaDTO {
     cuenta_id: number;
     equipo_id: number;
@@ -23,7 +22,6 @@ export interface CuentaDTO {
     saldo: number;
 }
 
-// Datos de prueba iniciales basados en tu respuesta JSON real
 const cuentasIniciales: CuentaDTO[] = [
     {
         cuenta_id: 2,
@@ -44,21 +42,19 @@ const cuentasIniciales: CuentaDTO[] = [
 ];
 
 export default function PaginaPagos(): React.ReactElement {
+    const { OpenModal } = useModal((state) => state);
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Captura estricta del equipo_id desde la URL
+    const [searchParams] = useSearchParams();
     const equipoIdParam = searchParams.get('equipo_id');
 
     const [cuentas] = useState<CuentaDTO[]>(cuentasIniciales);
     const [busqueda, setBusqueda] = useState<string>('');
 
-    // Filtrado de cuentas por equipo_id (URL) + búsqueda general
+    // Filtrado de la tabla únicamente por equipo_id de la URL
     const cuentasFiltradas = cuentas.filter((c) => {
-        const coincideEquipoId = equipoIdParam ? c.equipo_id === Number(equipoIdParam) : true;
-        const coincideTexto =
-            c.equipo_codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
-            c.cuenta_id.toString().includes(busqueda);
-
-        return coincideEquipoId && coincideTexto;
+        return equipoIdParam ? c.equipo_id === Number(equipoIdParam) : true;
     });
 
     // Totales acumulados
@@ -72,22 +68,13 @@ export default function PaginaPagos(): React.ReactElement {
 
     const handleLimpiar = () => setBusqueda('');
 
-    const handleQuitarFiltroEquipo = () => {
-        searchParams.delete('equipo_id');
-        setSearchParams(searchParams);
-    };
-
     const handleBuscar = () => {
-        console.log("Buscando cuentas/pagos:", { busqueda, equipoIdParam });
+        console.log("Buscando cuentas para equipo_id:", equipoIdParam, "con filtro:", busqueda);
     };
 
-    const handleEditar = (cuenta: CuentaDTO) => {
-        console.log("Registrar/Editar cobro o abono para cuenta ID:", cuenta.cuenta_id);
-        // Aquí abres tu modal de edición para registrar el abono o ajustar costo total
-    };
 
     const handleGenerarPDFRecibo = (cuenta: CuentaDTO) => {
-        console.log("Generando recibo PDF de pago para la cuenta ID:", cuenta.cuenta_id);
+        console.log("Generando recibo PDF para la cuenta ID:", cuenta.cuenta_id);
     };
 
     return (
@@ -100,7 +87,9 @@ export default function PaginaPagos(): React.ReactElement {
                             <CreditCard className="w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Gestión de Cuentas y Pagos</h1>
+                            <h1 className="text-2xl font-bold text-gray-800">
+                                Gestión de Cuentas y Pagos {equipoIdParam && `(Equipo #${equipoIdParam})`}
+                            </h1>
                             <p className="text-xs text-gray-500 mt-0.5">Control de costos totales, abonos y saldos pendientes</p>
                         </div>
                     </div>
@@ -108,28 +97,13 @@ export default function PaginaPagos(): React.ReactElement {
                     {/* Botón Regresar */}
                     <button
                         onClick={handleRegresar}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm shrink-0"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm shrink-0 cursor-pointer"
                         title="Volver a la vista anterior"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Regresar</span>
                     </button>
                 </div>
-
-                {/* Indicador de Filtro por Equipo ID */}
-                {equipoIdParam && (
-                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold">
-                        <Laptop className="w-4 h-4" />
-                        <span>Filtrado por Equipo ID: #{equipoIdParam}</span>
-                        <button
-                            onClick={handleQuitarFiltroEquipo}
-                            className="p-0.5 hover:bg-emerald-100 rounded-full transition-colors ml-1"
-                            title="Mostrar todos los registros"
-                        >
-                            <X className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                )}
 
                 {/* Barra de Búsqueda y Botones */}
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
@@ -138,7 +112,7 @@ export default function PaginaPagos(): React.ReactElement {
                     <div className="relative flex-1 min-w-[240px] max-w-md">
                         <input
                             type="text"
-                            placeholder="Buscar por código de equipo..."
+                            placeholder="Buscar en pagos..."
                             value={busqueda}
                             onChange={(e) => setBusqueda(e.target.value)}
                             className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -149,7 +123,7 @@ export default function PaginaPagos(): React.ReactElement {
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleLimpiar}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm cursor-pointer"
                             title="Limpiar búsqueda"
                         >
                             <RotateCcw className="w-3.5 h-3.5" />
@@ -158,7 +132,7 @@ export default function PaginaPagos(): React.ReactElement {
 
                         <button
                             onClick={handleBuscar}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm cursor-pointer"
                         >
                             <Search className="w-3.5 h-3.5" />
                             <span>Buscar</span>
@@ -219,34 +193,32 @@ export default function PaginaPagos(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         {cuenta.saldo === 0 ? (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Pagado
-                        </span>
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          Pagado
+                                        </span>
                                         ) : (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-full">
-                          <Clock className="w-3 h-3" />
-                          Pendiente
-                        </span>
+                                          <Clock className="w-3 h-3" />
+                                          Pendiente
+                                        </span>
                                         )}
                                     </td>
 
-                                    {/* Acciones: PDF y Editar (para gestionar el pago/abono) */}
+                                    {/* Acciones */}
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
 
-                                            {/* Botón Recibo PDF */}
                                             <button
                                                 onClick={() => handleGenerarPDFRecibo(cuenta)}
-                                                className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
+                                                className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 cursor-pointer"
                                                 title="Descargar Comprobante / Recibo PDF"
                                             >
-                                                <FileText className="w-4 h-4" />
+                                                <PrinterCheck className="w-4 h-4" />
                                             </button>
 
-                                            {/* Botón Editar (Gestión de Cobro/Abono) */}
                                             <button
-                                                onClick={() => handleEditar(cuenta)}
-                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
+                                                onClick={() => OpenModal(ModalLista.modal_pago)}
+                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
                                                 title="Gestionar Abono / Editar Cuenta"
                                             >
                                                 <Pencil className="w-4 h-4" />
@@ -260,7 +232,7 @@ export default function PaginaPagos(): React.ReactElement {
                         ) : (
                             <tr>
                                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                                    No se encontraron registros de cuentas o pagos.
+                                    No se encontraron registros de cuentas o pagos para este equipo.
                                 </td>
                             </tr>
                         )}

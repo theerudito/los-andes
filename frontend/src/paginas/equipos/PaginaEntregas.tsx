@@ -1,20 +1,19 @@
-
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Plus,
     Pencil,
     Search,
     RotateCcw,
-    FileText,
     ArrowLeft,
     PackageCheck,
-    Laptop,
-    X,
     User,
     CheckCircle2,
-    XCircle
+    XCircle,
+    PrinterCheck
 } from 'lucide-react';
-import React, {useState} from "react";
+import React, { useState } from "react";
+import { useModal } from '../../store/useModal.ts';
+import { ModalLista } from '../../helpers/ModalLista.ts';
 
 // Interface 1:1 con tu API de Go
 export interface EntregaDTO {
@@ -56,24 +55,19 @@ const entregasIniciales: EntregaDTO[] = [
 ];
 
 export default function PaginaEntregas(): React.ReactElement {
+    const { OpenModal } = useModal((state) => state);
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Captura estricta del equipo_id desde la URL
+    const [searchParams] = useSearchParams();
     const equipoIdParam = searchParams.get('equipo_id');
 
     const [entregas] = useState<EntregaDTO[]>(entregasIniciales);
     const [busqueda, setBusqueda] = useState<string>('');
 
-    // Filtrado de entregas por equipo_id (URL) + búsqueda general
+    // Filtrado de la tabla únicamente por equipo_id de la URL
     const entregasFiltradas = entregas.filter((e) => {
-        const coincideEquipoId = equipoIdParam ? e.equipo_id === Number(equipoIdParam) : true;
-        const coincideTexto =
-            e.equipo_codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
-            e.comprobante_nro.toLowerCase().includes(busqueda.toLowerCase()) ||
-            e.trabajos_realizados.toLowerCase().includes(busqueda.toLowerCase()) ||
-            e.estado_final_equipo.toLowerCase().includes(busqueda.toLowerCase()) ||
-            e.nombres.toLowerCase().includes(busqueda.toLowerCase());
-
-        return coincideEquipoId && coincideTexto;
+        return equipoIdParam ? e.equipo_id === Number(equipoIdParam) : true;
     });
 
     const handleRegresar = () => {
@@ -82,17 +76,8 @@ export default function PaginaEntregas(): React.ReactElement {
 
     const handleLimpiar = () => setBusqueda('');
 
-    const handleQuitarFiltroEquipo = () => {
-        searchParams.delete('equipo_id');
-        setSearchParams(searchParams);
-    };
-
     const handleBuscar = () => {
-        console.log("Buscando entregas:", { busqueda, equipoIdParam });
-    };
-
-    const handleNuevaEntrega = () => {
-        console.log("Registrar nueva entrega para equipo_id:", equipoIdParam || "General");
+        console.log("Buscando entregas para equipo_id:", equipoIdParam, "con filtro:", busqueda);
     };
 
     const handleEditar = (entrega: EntregaDTO) => {
@@ -113,7 +98,9 @@ export default function PaginaEntregas(): React.ReactElement {
                             <PackageCheck className="w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Gestión de Entregas</h1>
+                            <h1 className="text-2xl font-bold text-gray-800">
+                                Gestión de Entregas {equipoIdParam && `(Equipo #${equipoIdParam})`}
+                            </h1>
                             <p className="text-xs text-gray-500 mt-0.5">Comprobantes, actas de conformidad y estado final de equipos</p>
                         </div>
                     </div>
@@ -121,28 +108,13 @@ export default function PaginaEntregas(): React.ReactElement {
                     {/* Botón Regresar */}
                     <button
                         onClick={handleRegresar}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm shrink-0"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm shrink-0 cursor-pointer"
                         title="Volver a la vista anterior"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Regresar</span>
                     </button>
                 </div>
-
-                {/* Indicador de Filtro por Equipo ID */}
-                {equipoIdParam && (
-                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-semibold">
-                        <Laptop className="w-4 h-4" />
-                        <span>Filtrado por Equipo ID: #{equipoIdParam}</span>
-                        <button
-                            onClick={handleQuitarFiltroEquipo}
-                            className="p-0.5 hover:bg-amber-100 rounded-full transition-colors ml-1"
-                            title="Mostrar todas las entregas"
-                        >
-                            <X className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                )}
 
                 {/* Barra de Búsqueda y Botones */}
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
@@ -151,7 +123,7 @@ export default function PaginaEntregas(): React.ReactElement {
                     <div className="relative flex-1 min-w-[240px] max-w-md">
                         <input
                             type="text"
-                            placeholder="Buscar por código, comprobante, trabajos, responsable..."
+                            placeholder="Buscar en entregas..."
                             value={busqueda}
                             onChange={(e) => setBusqueda(e.target.value)}
                             className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
@@ -162,7 +134,7 @@ export default function PaginaEntregas(): React.ReactElement {
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleLimpiar}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm cursor-pointer"
                             title="Limpiar búsqueda"
                         >
                             <RotateCcw className="w-3.5 h-3.5" />
@@ -171,15 +143,15 @@ export default function PaginaEntregas(): React.ReactElement {
 
                         <button
                             onClick={handleBuscar}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm cursor-pointer"
                         >
                             <Search className="w-3.5 h-3.5" />
                             <span>Buscar</span>
                         </button>
 
                         <button
-                            onClick={handleNuevaEntrega}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors shadow-sm"
+                            onClick={() => OpenModal(ModalLista.modal_entrega)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Nueva Entrega</span>
@@ -242,14 +214,14 @@ export default function PaginaEntregas(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                         {entrega.conformidad_cliente === 1 ? (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200 rounded-full">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Conforme
-                        </span>
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          Conforme
+                                        </span>
                                         ) : (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200 rounded-full">
-                          <XCircle className="w-3 h-3" />
-                          No Conforme
-                        </span>
+                                          <XCircle className="w-3 h-3" />
+                                          No Conforme
+                                        </span>
                                         )}
                                     </td>
 
@@ -270,19 +242,17 @@ export default function PaginaEntregas(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
 
-                                            {/* Botón Comprobante PDF */}
                                             <button
-                                                onClick={() => handleGenerarPDFComprobante(entrega)}
-                                                className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
-                                                title="Descargar Comprobante / Acta PDF"
+                                                className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-100 cursor-pointer"
+                                                title="Imprimir Orden"
                                             >
-                                                <FileText className="w-4 h-4" />
+                                                <PrinterCheck className="w-4 h-4" />
                                             </button>
 
                                             {/* Botón Editar */}
                                             <button
-                                                onClick={() => handleEditar(entrega)}
-                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
+                                                onClick={() => OpenModal(ModalLista.modal_entrega)}
+                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
                                                 title="Editar entrega"
                                             >
                                                 <Pencil className="w-4 h-4" />
@@ -296,7 +266,7 @@ export default function PaginaEntregas(): React.ReactElement {
                         ) : (
                             <tr>
                                 <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
-                                    No se encontraron registros de entrega.
+                                    No se encontraron registros de entrega para este equipo.
                                 </td>
                             </tr>
                         )}

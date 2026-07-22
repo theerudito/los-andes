@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
     Pencil,
     Trash2,
@@ -9,10 +9,12 @@ import {
     FileText,
     Calendar,
     Filter,
-    X,
-    Laptop,
-    ArrowLeft
+    ArrowLeft,
+    Plus,
+    Tag
 } from 'lucide-react';
+import { useModal } from '../../store/useModal.ts';
+import { ModalLista } from '../../helpers/ModalLista.ts';
 
 export interface HistorialReparacionesDTO {
     historial_id: number;
@@ -67,9 +69,11 @@ const historialInicial: HistorialReparacionesDTO[] = [
 ];
 
 export default function PaginaHistorial(): React.ReactElement {
+    const { OpenModal } = useModal((state) => state);
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
-    const equipoIdParam = searchParams.get('equipo_id');
+
+    // Captura del parámetro directamente de la ruta /equipos/:equipo_id/historial
+    const { equipo_id } = useParams<{ equipo_id: string }>();
 
     const [historial, setHistorial] = useState<HistorialReparacionesDTO[]>(historialInicial);
     const [busqueda, setBusqueda] = useState<string>('');
@@ -78,33 +82,19 @@ export default function PaginaHistorial(): React.ReactElement {
     const [fechaDesde, setFechaDesde] = useState<string>('2026-07-01');
     const [fechaHasta, setFechaHasta] = useState<string>('2026-07-21');
 
-    // Filtrado de la tabla (Soporta equipo_id de la URL + búsqueda general)
+    // Filtrado de la tabla únicamente por equipo_id proveniente de la URL
     const historialFiltrado = historial.filter((h) => {
-        const coincideEquipoId = equipoIdParam ? h.equipo_id === Number(equipoIdParam) : true;
-        const coincideTexto =
-            h.equipo.toLowerCase().includes(busqueda.toLowerCase()) ||
-            h.serie.toLowerCase().includes(busqueda.toLowerCase()) ||
-            h.nombres_cliente.toLowerCase().includes(busqueda.toLowerCase()) ||
-            h.apellidos_cliente.toLowerCase().includes(busqueda.toLowerCase()) ||
-            h.nombres_usuario.toLowerCase().includes(busqueda.toLowerCase()) ||
-            h.observaciones_tecnicas.toLowerCase().includes(busqueda.toLowerCase());
-
-        return coincideEquipoId && coincideTexto;
+        return equipo_id ? h.equipo_id === Number(equipo_id) : true;
     });
 
     const handleRegresar = () => {
-        navigate(-1); // Regresa a la página anterior en el historial de navegación
+        navigate(-1);
     };
 
     const handleLimpiarBusqueda = () => setBusqueda('');
 
-    const handleQuitarFiltroEquipo = () => {
-        searchParams.delete('equipo_id');
-        setSearchParams(searchParams);
-    };
-
     const handleBuscar = () => {
-        console.log("Ejecutando búsqueda en historial:", { busqueda, equipoIdParam });
+        console.log("Ejecutando búsqueda en historial para equipo_id:", equipo_id, "con filtro:", busqueda);
     };
 
     const handleActualizarHistorial = (item: HistorialReparacionesDTO) => {
@@ -121,7 +111,7 @@ export default function PaginaHistorial(): React.ReactElement {
         const payloadReporte = {
             fecha_desde: fechaDesde,
             fecha_hasta: fechaHasta,
-            equipo_id: equipoIdParam ? Number(equipoIdParam) : null
+            equipo_id: equipo_id ? Number(equipo_id) : null
         };
         console.log("Generando Reporte PDF del Historial en Go:", payloadReporte);
     };
@@ -149,35 +139,22 @@ export default function PaginaHistorial(): React.ReactElement {
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-full">
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Historial de Reparaciones</h1>
+                        <h1 className="text-2xl font-bold text-gray-800">
+                            Historial de Reparaciones {equipo_id && `(Equipo #${equipo_id})`}
+                        </h1>
                         <p className="text-xs text-gray-500 mt-0.5">Seguimiento técnico y registros de intervenciones</p>
                     </div>
 
                     {/* Botón Regresar */}
                     <button
                         onClick={handleRegresar}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm shrink-0"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm shrink-0 cursor-pointer"
                         title="Volver a la vista anterior"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Regresar</span>
                     </button>
                 </div>
-
-                {/* Indicador de Filtro por Equipo (si viene equipo_id por URL) */}
-                {equipoIdParam && (
-                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-semibold">
-                        <Laptop className="w-4 h-4" />
-                        <span>Filtrado por Equipo ID: #{equipoIdParam}</span>
-                        <button
-                            onClick={handleQuitarFiltroEquipo}
-                            className="p-0.5 hover:bg-indigo-100 rounded-full transition-colors ml-1"
-                            title="Mostrar todos los equipos"
-                        >
-                            <X className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                )}
 
                 {/* Barra de Búsqueda y Botones abajo */}
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
@@ -186,7 +163,7 @@ export default function PaginaHistorial(): React.ReactElement {
                     <div className="relative flex-1 min-w-[240px] max-w-md">
                         <input
                             type="text"
-                            placeholder="Buscar por equipo, serie, cliente o técnico..."
+                            placeholder="Buscar en el historial..."
                             value={busqueda}
                             onChange={(e) => setBusqueda(e.target.value)}
                             className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
@@ -197,7 +174,7 @@ export default function PaginaHistorial(): React.ReactElement {
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleLimpiarBusqueda}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm cursor-pointer"
                             title="Limpiar búsqueda"
                         >
                             <RotateCcw className="w-3.5 h-3.5" />
@@ -206,10 +183,19 @@ export default function PaginaHistorial(): React.ReactElement {
 
                         <button
                             onClick={handleBuscar}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm cursor-pointer"
                         >
                             <Search className="w-3.5 h-3.5" />
                             <span>Buscar</span>
+                        </button>
+
+
+                        <button
+                            onClick={() => OpenModal(ModalLista.modal_historial)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Nuevo Historial</span>
                         </button>
                     </div>
 
@@ -257,7 +243,7 @@ export default function PaginaHistorial(): React.ReactElement {
                     {/* Botón Descarga PDF */}
                     <button
                         onClick={handleGenerarPDFHistorial}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                         title="Exportar Historial a PDF"
                     >
                         <FileText className="w-4 h-4" />
@@ -312,9 +298,9 @@ export default function PaginaHistorial(): React.ReactElement {
 
                                     {/* Estado */}
                                     <td className="px-4 py-3.5 whitespace-nowrap">
-                      <span className={`inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full border ${getBadgeEstado(item.estado)}`}>
-                        {item.estado}
-                      </span>
+                                      <span className={`inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full border ${getBadgeEstado(item.estado)}`}>
+                                        {item.estado}
+                                      </span>
                                     </td>
 
                                     {/* Técnico Responsable */}
@@ -334,15 +320,15 @@ export default function PaginaHistorial(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
                                             <button
-                                                onClick={() => handleActualizarHistorial(item)}
-                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
+                                                onClick={() => OpenModal(ModalLista.modal_historial)}
+                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
                                                 title="Actualizar / Editar Historial"
                                             >
                                                 <Pencil className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleEliminar(item.historial_id)}
-                                                className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
+                                                className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 cursor-pointer"
                                                 title="Eliminar registro"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -354,7 +340,7 @@ export default function PaginaHistorial(): React.ReactElement {
                         ) : (
                             <tr>
                                 <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
-                                    No se encontraron registros de historial técnico.
+                                    No se encontraron registros de historial técnico para este equipo.
                                 </td>
                             </tr>
                         )}

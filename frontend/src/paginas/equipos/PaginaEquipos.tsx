@@ -12,7 +12,7 @@ import {
     PackageCheck,
     FileText,
     Calendar,
-    Filter
+    Filter, PrinterCheck
 } from 'lucide-react';
 import {useModal} from "../../store/useModal.ts";
 import {ModalLista} from "../../helpers/ModalLista.ts";
@@ -344,11 +344,14 @@ export default function PaginaEquipos(): React.ReactElement {
                                         <div className="text-gray-400">Est: {equipo.fecha_estimada_entrega}</div>
                                     </td>
 
-                                    {/* Botones de Acción */}
                                     <td className="px-4 py-3 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
-
-                                            {/* 1. Historial */}
+                                            <button
+                                                className="p-1.5 text-aqua-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-indigo-100"
+                                                title="Imprimir Orden"
+                                            >
+                                                <PrinterCheck className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={() => handleVerHistorial(equipo.equipo_id)}
                                                 className="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-100"
@@ -356,8 +359,6 @@ export default function PaginaEquipos(): React.ReactElement {
                                             >
                                                 <History className="w-4 h-4" />
                                             </button>
-
-                                            {/* 2. Entrega */}
                                             <button
                                                 onClick={() => handleGestionarEntrega(equipo.equipo_id)}
                                                 className="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors border border-amber-100"
@@ -365,8 +366,6 @@ export default function PaginaEquipos(): React.ReactElement {
                                             >
                                                 <PackageCheck className="w-4 h-4" />
                                             </button>
-
-                                            {/* 3. Pagos */}
                                             <button
                                                 onClick={() => handleGestionarPagos(equipo.equipo_id)}
                                                 className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-100"
@@ -374,8 +373,6 @@ export default function PaginaEquipos(): React.ReactElement {
                                             >
                                                 <CreditCard className="w-4 h-4" />
                                             </button>
-
-                                            {/* 4. Editar */}
                                             <button
                                                 onClick={() => handleEditar(equipo)}
                                                 className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
@@ -383,8 +380,6 @@ export default function PaginaEquipos(): React.ReactElement {
                                             >
                                                 <Pencil className="w-4 h-4" />
                                             </button>
-
-                                            {/* 5. Eliminar */}
                                             <button
                                                 onClick={() => handleEliminar(equipo.equipo_id)}
                                                 className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"

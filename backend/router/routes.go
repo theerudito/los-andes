@@ -13,7 +13,6 @@ func SetupRoutes(app *fiber.App) {
 
 	allowedOrigins := map[string]bool{
 		os.Getenv("URL_Frontend"): true,
-		"":                        true,
 	}
 
 	app.Use(cors.New(cors.Config{

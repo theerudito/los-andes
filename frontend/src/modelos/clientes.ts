@@ -10,3 +10,8 @@ export interface Cliente {
     fecha_creacion: string;
     fecha_modificacion: string;
 }
+
+export interface ReqCliente {
+    fecha_creacion: string;
+    fecha_modificacion: string;
+}
