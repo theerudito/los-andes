@@ -9,6 +9,8 @@ import {
     Calendar,
     Filter
 } from 'lucide-react';
+import {useModal} from "../../store/useModal.ts";
+import {ModalLista} from "../../helpers/ModalLista.ts";
 
 export interface Cliente {
     cliente_id: number;
@@ -51,10 +53,11 @@ const clientesIniciales: Cliente[] = [
 ];
 
 export default function PaginaClientes(): React.ReactElement {
+    const { OpenModal } = useModal((state) => state);
+
     const [clientes, setClientes] = useState<Cliente[]>(clientesIniciales);
     const [busqueda, setBusqueda] = useState<string>('');
 
-    // Estados para el reporte por rango de fechas
     const [fechaDesde, setFechaDesde] = useState<string>('2026-07-01');
     const [fechaHasta, setFechaHasta] = useState<string>('2026-07-16');
 
@@ -71,9 +74,6 @@ export default function PaginaClientes(): React.ReactElement {
         console.log("Buscando cliente:", busqueda);
     };
 
-    const handleNuevo = () => {
-        console.log("Nuevo cliente");
-    };
 
     const handleEditar = (cliente: Cliente) => {
         console.log("Editar cliente:", cliente);
@@ -85,27 +85,22 @@ export default function PaginaClientes(): React.ReactElement {
         }
     };
 
-    // Manejador para la generación del reporte PDF
     const handleGenerarPDF = () => {
         const payloadReporte = { fecha_desde: fechaDesde, fecha_hasta: fechaHasta };
         console.log("Descargando Reporte PDF de Clientes en Go:", payloadReporte);
-        // Aquí ejecutas la petición a tu endpoint de Go para generar el PDF
     };
 
     return (
         <div className="space-y-6 w-full">
 
-            {/* Encabezado Superior: Título + Barra de Búsqueda y Botones de Acción */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-full">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Listado de Clientes</h1>
                     <p className="text-xs text-gray-500 mt-0.5">Gestión de clientes y generación de reportes</p>
                 </div>
 
-                {/* Barra de Búsqueda y Acciones Rápidas */}
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
 
-                    {/* Input de Búsqueda general */}
                     <div className="relative flex-1 min-w-[240px] max-w-md">
                         <input
                             type="text"
@@ -135,7 +130,7 @@ export default function PaginaClientes(): React.ReactElement {
                         </button>
 
                         <button
-                            onClick={handleNuevo}
+                            onClick={() => OpenModal(ModalLista.modal_cliente)}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
                         >
                             <Plus className="w-3.5 h-3.5" />

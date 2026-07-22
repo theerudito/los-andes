@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Pencil, Trash2, Search, RotateCcw, Shield } from 'lucide-react';
+import {useModal} from "../../store/useModal.ts";
+import {ModalLista} from "../../helpers/ModalLista.ts";
 
 export interface Usuario {
     usuario_id: number;
@@ -44,6 +46,9 @@ const usuariosIniciales: Usuario[] = [
 ];
 
 export default function PaginaUsuarios(): React.ReactElement {
+    const { OpenModal } = useModal((state) => state);
+
+
     const [usuarios, setUsuarios] = useState<Usuario[]>(usuariosIniciales);
     const [busqueda, setBusqueda] = useState<string>('');
 
@@ -89,17 +94,12 @@ export default function PaginaUsuarios(): React.ReactElement {
 
     return (
         <div className="space-y-6 w-full">
-            {/* Encabezado Superior: Título arriba y controles abajo */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-full">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
                     <p className="text-xs text-gray-500 mt-0.5">Control de cuentas y accesos al sistema</p>
                 </div>
-
-                {/* Barra de Búsqueda y Botones con Texto */}
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
-
-                    {/* Input de Búsqueda */}
                     <div className="relative flex-1 min-w-[240px] max-w-md">
                         <input
                             type="text"
@@ -109,11 +109,7 @@ export default function PaginaUsuarios(): React.ReactElement {
                             className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                     </div>
-
-                    {/* Grupo de Botones de Acción con Texto Explicativo */}
                     <div className="flex flex-wrap items-center gap-2">
-
-                        {/* Botón Limpiar */}
                         <button
                             onClick={handleLimpiar}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm"
@@ -123,7 +119,6 @@ export default function PaginaUsuarios(): React.ReactElement {
                             <span>Limpiar</span>
                         </button>
 
-                        {/* Botón Buscar */}
                         <button
                             onClick={handleBuscar}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm"
@@ -132,9 +127,8 @@ export default function PaginaUsuarios(): React.ReactElement {
                             <span>Buscar</span>
                         </button>
 
-                        {/* Botón Nuevo Usuario */}
                         <button
-                            onClick={handleNuevo}
+                            onClick={() => OpenModal(ModalLista.modal_usuario)}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
                         >
                             <Plus className="w-3.5 h-3.5" />

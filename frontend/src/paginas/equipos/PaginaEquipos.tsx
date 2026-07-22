@@ -14,6 +14,8 @@ import {
     Calendar,
     Filter
 } from 'lucide-react';
+import {useModal} from "../../store/useModal.ts";
+import {ModalLista} from "../../helpers/ModalLista.ts";
 
 export interface EquipoDTO {
     equipo_id: number;
@@ -83,6 +85,8 @@ const equiposIniciales: EquipoDTO[] = [
 ];
 
 export default function PaginaEquipos(): React.ReactElement {
+    const OpenModal = useModal((state) => state.OpenModal);
+
     const navigate = useNavigate();
     const [equipos, setEquipos] = useState<EquipoDTO[]>(equiposIniciales);
     const [busqueda, setBusqueda] = useState<string>('');
@@ -105,10 +109,6 @@ export default function PaginaEquipos(): React.ReactElement {
 
     const handleBuscar = () => {
         console.log("Buscando equipos:", busqueda);
-    };
-
-    const handleNuevoEquipo = () => {
-        console.log("Registrar nuevo equipo");
     };
 
     const handleNuevaMarca = () => {
@@ -205,7 +205,7 @@ export default function PaginaEquipos(): React.ReactElement {
 
                         {/* Botón Nueva Marca */}
                         <button
-                            onClick={handleNuevaMarca}
+                            onClick={() => OpenModal(ModalLista.modal_marca)}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shadow-sm"
                         >
                             <Tag className="w-3.5 h-3.5" />
@@ -214,7 +214,7 @@ export default function PaginaEquipos(): React.ReactElement {
 
                         {/* Botón Nuevo Equipo */}
                         <button
-                            onClick={handleNuevoEquipo}
+                            onClick={() => OpenModal(ModalLista.modal_equipo)}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
                         >
                             <Plus className="w-3.5 h-3.5" />
@@ -308,9 +308,9 @@ export default function PaginaEquipos(): React.ReactElement {
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <div className="font-semibold text-gray-800 text-sm">{equipo.tipo_equipo} {equipo.modelo}</div>
                                         <div className="flex items-center gap-2 mt-0.5">
-                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600 rounded">
-                          {equipo.marca}
-                        </span>
+                                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600 rounded">
+                                          {equipo.marca}
+                                        </span>
                                             <span className="text-[11px] text-gray-400 font-mono">S/N: {equipo.numero_serie}</span>
                                         </div>
                                     </td>
@@ -333,9 +333,9 @@ export default function PaginaEquipos(): React.ReactElement {
 
                                     {/* Estado */}
                                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-full border ${getBadgeEstado(equipo.estado)}`}>
-                        {equipo.estado}
-                      </span>
+                                    <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-full border ${getBadgeEstado(equipo.estado)}`}>
+                                        {equipo.estado}
+                                    </span>
                                     </td>
 
                                     {/* Fechas */}
