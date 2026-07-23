@@ -1,68 +1,47 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { Search, RotateCcw, AlertTriangle, Calendar, Filter } from 'lucide-react';
-
-export interface LogError {
-    log_error_id: number;
-    fecha: string;
-    modulo: string;
-    mensaje_error: string;
-}
-
-// Datos de prueba basados en la respuesta de tu API
-const logsIniciales: LogError[] = [
-    {
-        log_error_id: 9,
-        fecha: "14/07/2026 20:00:40",
-        modulo: "historial",
-        mensaje_error: "error consultando historial SQL logic error: ambiguous column name: e.estado_id (1)"
-    },
-    {
-        log_error_id: 8,
-        fecha: "14/07/2026 19:44:18",
-        modulo: "historial",
-        mensaje_error: "error consultando historial SQL logic error: no such column: eq.nombre (1)"
-    },
-    {
-        log_error_id: 7,
-        fecha: "14/07/2026 19:38:03",
-        modulo: "historial",
-        mensaje_error: "error consultando historial SQL logic error: no such column: eq.nombre (1)"
-    },
-    {
-        log_error_id: 6,
-        fecha: "14/07/2026 19:37:02",
-        modulo: "historial",
-        mensaje_error: "error consultando historial SQL logic error: no such column: eq.nombre (1)"
-    }
-];
+import type {LogError} from "../../modelos/logError.ts";
+import {logsService} from "../../servicios/logServicio.ts";
+import type {reqLog} from "../../modelos/logOk.ts";
 
 export default function PaginaAuditoriaError(): React.ReactElement {
-    const [logs, setLogs] = useState<LogError[]>(logsIniciales);
-
-    // Estados para los filtros que se envían al Backend
-    const [fechaDesde, setFechaDesde] = useState<string>('2026-07-14');
-    const [fechaHasta, setFechaHasta] = useState<string>('2026-07-16');
+    const [logs, setLogs] = useState<LogError[]>([]);
+    const [fechaDesde, setFechaDesde] = useState<string>("2026-07-01");
+    const [fechaHasta, setFechaHasta] = useState<string>("2026-07-31");
     const [modulo, setModulo] = useState<string>('');
 
-    const handleBuscar = () => {
+    async function handleBuscar () {
         const payload = {
             fecha_desde: fechaDesde,
             fecha_hasta: fechaHasta,
             modulo: modulo
         };
-        console.log("Enviando petición de logs al backend:", payload);
-        // Aquí ejecutas la petición POST/GET a tu API en Go pasando `payload`
-    };
+        const  data = await logsService.obtenerLogsError(payload)
+        setLogs(data)
+    }
 
-    const handleLimpiar = () => {
+    async function handleLimpiar () {
         setFechaDesde('');
         setFechaHasta('');
         setModulo('');
-    };
+    }
+
+    async function ObtenerLogs(){
+        const obj: reqLog = {
+            fecha_desde: fechaDesde,
+            fecha_hasta: fechaHasta,
+            modulo: modulo
+        }
+        const  data = await logsService.obtenerLogsError(obj)
+        setLogs(data)
+    }
+
+    useEffect(() => {
+        ObtenerLogs();
+    }, []);
 
     return (
         <div className="space-y-6 w-full">
-            {/* Encabezado Superior con Formulario de Filtros */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-full">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-red-50 text-red-600 rounded-lg">
@@ -74,11 +53,8 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                     </div>
                 </div>
 
-                {/* Sección de Filtros por Fecha y Módulo */}
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-end justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3 flex-1">
-
-                        {/* Input Fecha Desde */}
                         <div className="flex-1 min-w-[160px]">
                             <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
                                 <Calendar className="w-3.5 h-3.5" /> Fecha Desde
@@ -91,7 +67,6 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                             />
                         </div>
 
-                        {/* Input Fecha Hasta */}
                         <div className="flex-1 min-w-[160px]">
                             <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
                                 <Calendar className="w-3.5 h-3.5" /> Fecha Hasta
@@ -104,7 +79,6 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                             />
                         </div>
 
-                        {/* Select Módulo */}
                         <div className="flex-1 min-w-[180px]">
                             <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
                                 <Filter className="w-3.5 h-3.5" /> Módulo
@@ -115,17 +89,20 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                                 className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
                             >
                                 <option value="">Todos los módulos</option>
-                                <option value="historial">Historial</option>
                                 <option value="clientes">Clientes</option>
                                 <option value="equipos">Equipos</option>
+                                <option value="historial">Historial</option>
+                                <option value="entregas">Entregas</option>
+                                <option value="marcas">Marcas</option>
                                 <option value="usuarios">Usuarios</option>
-                                <option value="login">Login / Auth</option>
+                                <option value="cuentas">Cuentas</option>
+                                <option value="usuarios">Usuarios</option>
+                                <option value="secuencial">Secuencial</option>
                             </select>
                         </div>
 
                     </div>
 
-                    {/* Botones de Acción */}
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleLimpiar}
@@ -135,7 +112,6 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                             <RotateCcw className="w-3.5 h-3.5" />
                             <span>Limpiar</span>
                         </button>
-
                         <button
                             onClick={handleBuscar}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm"
@@ -147,7 +123,6 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                 </div>
             </div>
 
-            {/* Tabla de Logs de Error (Sin acciones) */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto w-full">
                     <table className="w-full text-left text-sm text-gray-600">
@@ -165,31 +140,22 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                         {logs.length > 0 ? (
                             logs.map((log) => (
                                 <tr key={log.log_error_id} className="hover:bg-red-50/20 transition-colors text-xs">
-
-                                    {/* ID */}
                                     <td className="px-4 py-3.5 font-bold text-gray-700">
                                         #{log.log_error_id}
                                     </td>
-
-                                    {/* Fecha */}
                                     <td className="px-4 py-3.5 whitespace-nowrap text-gray-600 font-medium">
                                         {log.fecha}
                                     </td>
-
-                                    {/* Módulo */}
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                       <span className="inline-block px-2.5 py-1 text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200 rounded-md uppercase">
                         {log.modulo}
                       </span>
                                     </td>
-
-                                    {/* Mensaje de Error en Estilo Consola/Terminal */}
                                     <td className="px-4 py-3.5">
                                         <div className="p-2 bg-gray-900 text-red-400 font-mono text-[11px] rounded-md border border-gray-800 break-all select-all">
                                             {log.mensaje_error}
                                         </div>
                                     </td>
-
                                 </tr>
                             ))
                         ) : (
@@ -202,8 +168,6 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                         </tbody>
                     </table>
                 </div>
-
-                {/* Pie de Tabla */}
                 <div className="p-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between items-center bg-gray-50/30">
                     <span>Total de errores registrados: {logs.length}</span>
                 </div>

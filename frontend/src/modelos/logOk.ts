@@ -7,7 +7,7 @@ export interface LogOk {
     descripcion: string;
 }
 
-export interface LogOkDTO {
+export interface reqLog {
     fecha_desde: string;
     fecha_hasta: string;
     modulo: string;

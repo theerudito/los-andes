@@ -234,7 +234,7 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 
 	err = helpers.InsertLogs(tx, "INSERT", "entregas", claims.Name, "registro creado correctamente")
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "usuarios", "error insertando la auditoria "+err.Error())
+		_ = helpers.InsertLogsError(conn, "entregas", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
@@ -454,7 +454,7 @@ func OrdenEntrega(c *fiber.Ctx) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Informacion de entrega no encontrada"})
 	} else if err != nil {
-		_ = helpers.InsertLogsError(conn, "entregas_reporte", "Error al consultar acta de entrega: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "entregas", "Error al consultar acta de entrega: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al consultar los datos de entrega"})
 	}
 
@@ -558,7 +558,7 @@ func OrdenEntrega(c *fiber.Ctx) error {
 	var buf bytes.Buffer
 	err = pdf.Output(&buf)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "entregas_reporte", "Error al procesar PDF de Entrega: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "entregas", "Error al procesar PDF de Entrega: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar el comprobante de entrega"})
 	}
 

@@ -1,13 +1,13 @@
 import api from "../helpers/fetching/axios.ts";
-import type {LogError} from "../modelos/logError.ts";
+import type {reqLog} from "../modelos/logOk.ts";
 
 export const logsService = {
-    obtenerLogsError: async (req: LogError) => {
-        const { data } = await api.post('/logs-error/', req || {});
+    obtenerLogsError: async (req: reqLog) => {
+        const { data } = await api.post('/logs-error/', req);
         return data;
     },
-    obtenerLogsOk: async (req: LogError) => {
-        const { data } = await api.post('/logs-ok/', req || {});
+    obtenerLogsOk: async (req: reqLog) => {
+        const { data } = await api.post('/logs-ok/', req);
         return data;
     },
 };

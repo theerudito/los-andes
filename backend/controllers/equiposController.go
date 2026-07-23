@@ -854,7 +854,7 @@ func OrdenIngreso(c *fiber.Ctx) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Equipo no encontrado"})
 	} else if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos_reporte", "Error al consultar orden de ingreso: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "equipos", "Error al consultar orden de ingreso: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al consultar los datos del equipo"})
 	}
 
@@ -966,7 +966,7 @@ func OrdenIngreso(c *fiber.Ctx) error {
 	var buf bytes.Buffer
 	err = pdf.Output(&buf)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos_reporte", "Error al procesar PDF de Orden de Ingreso: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "equipos", "Error al procesar PDF de Orden de Ingreso: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar el comprobante PDF"})
 	}
 

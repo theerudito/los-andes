@@ -124,7 +124,7 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	claims, err = helpers.ReadClaims(c)
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error al leer los clains "+err.Error())
+		_ = helpers.InsertLogsError(conn, "historial", "error al leer los clains "+err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
@@ -164,7 +164,7 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	if historial.EstadoId == 7 {
 		var err = conn.QueryRow(`SELECT saldo FROM cuentas_reparacion WHERE equipo_id = ?`, historial.EquipoId).Scan(&saldo)
 		if err != nil {
-			_ = helpers.InsertLogsError(conn, "historial", "error consultando saldo para cancelar "+err.Error())
+			_ = helpers.InsertLogsError(conn, "cuentas", "error consultando saldo para cancelar "+err.Error())
 			return c.Status(500).JSON(fiber.Map{"message": "error al verificar saldo de cuenta"})
 		}
 
@@ -199,7 +199,7 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	)
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "historial", "error actualizando equipos "+err.Error())
+		_ = helpers.InsertLogsError(conn, "equipos", "error actualizando equipos "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar estado del equipo"})
 	}
 
@@ -229,10 +229,10 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error al procesar los cambios"})
 	}
 
-	err = helpers.InsertLogs(conn, "UPDATE", "historial_reparaciones", claims.Name, "registro actualizado correctamente")
+	err = helpers.InsertLogs(conn, "UPDATE", "historial", claims.Name, "registro actualizado correctamente")
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "marcas", "error insertando la auditoria "+err.Error())
+		_ = helpers.InsertLogsError(conn, "historial", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
@@ -250,7 +250,7 @@ func ReporteHistorial(c *fiber.Ctx) error {
 	)
 
 	if err := c.BodyParser(&req); err != nil {
-		_ = helpers.InsertLogsError(conn, "historial_reporte", "El contenido del json es incorrecto: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "historial", "El contenido del json es incorrecto: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
@@ -304,7 +304,7 @@ func ReporteHistorial(c *fiber.Ctx) error {
 
 	rows, err := conn.Query(queryBase, args...)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "historial_reporte", "Error al ejecutar la consulta: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "historial", "Error al ejecutar la consulta: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 	defer rows.Close()
@@ -328,7 +328,7 @@ func ReporteHistorial(c *fiber.Ctx) error {
 			&h.Apellidos_Cliente,
 		)
 		if err != nil {
-			_ = helpers.InsertLogsError(conn, "historial_reporte", "Error al leer los registros: "+err.Error())
+			_ = helpers.InsertLogsError(conn, "historial", "Error al leer los registros: "+err.Error())
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 		historiales = append(historiales, h)
@@ -387,7 +387,7 @@ func ReporteHistorial(c *fiber.Ctx) error {
 	var buf bytes.Buffer
 	err = pdf.Output(&buf)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "historial_reporte", "Error al procesar salida PDF: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "historial", "Error al procesar salida PDF: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar el archivo PDF"})
 	}
 

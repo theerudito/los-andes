@@ -14,10 +14,9 @@ import {ModalLista} from "../../helpers/ModalLista.ts";
 import {useClientes} from "../../store/useClientes.ts";
 import type {ReqCliente} from "../../modelos/clientes.ts";
 
-
 export default function PaginaClientes(): React.ReactElement {
     const {OpenModal} = useModal((state) => state);
-    const {ObtenerClientes, listar_clientes, EliminarCliente, DescargarPdf, ObtenerCliente} = useClientes((state) => state);
+    const {ObtenerClientes, listar_clientes, EliminarCliente, ObtenerCliente, DescargarPdf} = useClientes((state) => state);
 
     const [busqueda, setBusqueda] = useState<string>('');
     const [fechaDesde, setFechaDesde] = useState<string>('2026-07-01');
@@ -26,6 +25,19 @@ export default function PaginaClientes(): React.ReactElement {
     useEffect(() => {
         ObtenerClientes();
     }, []);
+
+    function VerCliente (id: number) {
+        OpenModal(ModalLista.modal_cliente)
+        ObtenerCliente(id)
+    }
+
+    function VerReporte() {
+        const obj: ReqCliente = {
+            fecha_desde: fechaDesde,
+            fecha_hasta: fechaHasta
+        };
+        DescargarPdf(obj);
+    }
 
     return (
         <div className="space-y-6 w-full">
@@ -110,9 +122,8 @@ export default function PaginaClientes(): React.ReactElement {
                     </div>
 
                     <div className="w-[1px] h-6 bg-gray-200 hidden sm:block"/>
-
                     <button
-
+                        onClick={VerReporte}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                         title="Exportar a PDF"
                     >
@@ -142,9 +153,9 @@ export default function PaginaClientes(): React.ReactElement {
                         <tbody className="divide-y divide-gray-100">
                         {listar_clientes.length > 0 ? (
                             listar_clientes.map((cliente) => (
-                                <tr key={cliente.cliente_id} className="hover:bg-gray-50/80 transition-colors">
+                                <tr key={cliente.marca_id} className="hover:bg-gray-50/80 transition-colors">
                                     <td className="px-4 py-3.5 font-medium text-gray-900">
-                                        #{cliente.cliente_id}
+                                        #{cliente.marca_id}
                                     </td>
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                         <div className="font-medium text-gray-800">{cliente.identificacion}</div>
@@ -168,7 +179,7 @@ export default function PaginaClientes(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
                                             <button
-                                                onClick={() => ObtenerCliente(cliente.cliente_id)}
+                                                onClick={() => VerCliente(cliente.cliente_id)}
                                                 className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
                                                 title="Editar cliente"
                                             >

@@ -9,11 +9,31 @@ import {
 
 import { useModal } from "../store/useModal.ts";
 import { ModalLista } from "../helpers/ModalLista.ts";
+import {useMarcas} from "../store/useMarcas.ts";
+import React, {useEffect} from "react";
 
 export default function ModalMarcas() {
     const { modalName, CloseModal } = useModal((state) => state);
+    const { ObtenerMarcas, ObtenerMarca, EnviarMarca, EliminarMarca, form_marca, listar_marca} = useMarcas((state) => state);
+
+    useEffect(() => {
+        ObtenerMarcas();
+    }, []);
 
     if (modalName !== ModalLista.modal_marca) return null;
+
+    const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name } = e.target;
+        const value = e.target.value;
+        useMarcas.setState((state) => {
+            return {
+                form_marca: {
+                    ...state.form_marca,
+                    [name]: value.toUpperCase()
+                },
+            };
+        });
+    };
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[60] p-4 transition-all duration-300">
@@ -38,6 +58,8 @@ export default function ModalMarcas() {
                         <input
                             type="text"
                             name="nombre"
+                            value={form_marca.nombre}
+                            onChange={handleChangeInput}
                             placeholder="Ingrese la nueva marca"
                             className="flex-1 px-3 py-2 text-xs outline-none text-slate-700 placeholder-slate-400 uppercase font-medium"
                         />
@@ -52,6 +74,7 @@ export default function ModalMarcas() {
                             </button>
 
                             <button
+                                onClick={EnviarMarca}
                                 type="button"
                                 className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 flex items-center justify-center transition-all gap-1 text-xs font-semibold active:scale-95"
                                 title="Guardar"
@@ -81,7 +104,44 @@ export default function ModalMarcas() {
                                 </thead>
 
                                 <tbody className="divide-y divide-slate-100">
-                                {/* Aquí renderizarás las filas dinámicamente */}
+                                {listar_marca && listar_marca.length > 0 ? (
+                                    listar_marca.map((item) => (
+                                        <tr key={item.marca_id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="py-2.5 px-4 font-semibold text-slate-900 truncate">
+                                                #{item.marca_id}
+                                            </td>
+                                            <td className="py-2.5 px-4 text-slate-700 font-medium truncate" title={`${item.nombre} `}>
+                                                {item.nombre}
+                                            </td>
+                                            <td className="py-2.5 px-4 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <button
+                                                        onClick={() => ObtenerMarca(item.marca_id)}
+                                                        type="button"
+                                                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                        title="Editar"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => EliminarMarca(item.marca_id)}
+                                                        type="button"
+                                                        className="p-1 text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={3} className="py-6 text-center text-slate-400 font-medium">
+                                            No hay registros disponibles
+                                        </td>
+                                    </tr>
+                                )}
                                 </tbody>
                             </table>
                         </div>

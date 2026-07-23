@@ -120,6 +120,7 @@ export const useClientes = create<Data>((set, get) => ({
     },
 
     DescargarPdf: async (req: ReqCliente) => {
+        console.log(req)
         try {
             await clienteService.reporteClientePdf(req);
         } catch (error) {

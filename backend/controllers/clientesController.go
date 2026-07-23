@@ -550,7 +550,7 @@ func ReporteCliente(c *fiber.Ctx) error {
 	var buf bytes.Buffer
 	err = pdf.Output(&buf)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "clientes_reporte", "Error al procesar salida PDF: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "clientes", "Error al procesar salida PDF: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al generar el archivo PDF"})
 	}
 

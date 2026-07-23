@@ -40,7 +40,7 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
     WHERE c.equipo_id = ?`, id)
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "movie", "Error al ejecutar la consulta")
+		_ = helpers.InsertLogsError(conn, "pagos", "Error al ejecutar la consulta")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
@@ -56,7 +56,7 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 			&cuenta.Saldo)
 
 		if err != nil {
-			_ = helpers.InsertLogsError(conn, "movie", "Error al leer los registros")
+			_ = helpers.InsertLogsError(conn, "pagos", "Error al leer los registros")
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
@@ -91,7 +91,7 @@ func ActualizarCuentaEquipo(c *fiber.Ctx) error {
 
 	claims, err = helpers.ReadClaims(c)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error al leer los clains "+err.Error())
+		_ = helpers.InsertLogsError(conn, "cuentas", "error al leer los clains "+err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
@@ -105,7 +105,7 @@ func ActualizarCuentaEquipo(c *fiber.Ctx) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El equipo especificado no existe"})
 		}
-		_ = helpers.InsertLogsError(conn, "cuentas", "error consultando estado de equipo: "+err.Error())
+		_ = helpers.InsertLogsError(conn, "equipos", "error consultando estado de equipo: "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al verificar estado del equipo"})
 	}
 
@@ -167,7 +167,7 @@ func ActualizarCuentaEquipo(c *fiber.Ctx) error {
 	tx, err = conn.Begin()
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "marcas", "error iniciando transacción "+err.Error())
+		_ = helpers.InsertLogsError(conn, "cuentas", "error iniciando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
 	}
 
@@ -190,7 +190,7 @@ func ActualizarCuentaEquipo(c *fiber.Ctx) error {
 
 	err = helpers.InsertLogs(tx, "UPDATE", "cuentas", claims.Name, "registro actualizando correctamente")
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "cuentas", "error insertando la auditoria "+err.Error())
+		_ = helpers.InsertLogsError(conn, "marcas", "error insertando la auditoria "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
