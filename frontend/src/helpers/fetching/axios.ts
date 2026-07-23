@@ -11,7 +11,7 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         //const token = localStorage.getItem('token');
-        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJuYW1lIjoiU0lTVEVNQSIsInJvbCI6IlNJU1RFTUEiLCJhdWQiOlsiIl0sImV4cCI6MTc4NDgwNjQyNSwiaWF0IjoxNzg0NzcwNDI1fQ.ysaSelX-xW1nJ8qjD03tWFton788L85FbV-GQy9yoAw';
+        const token = import.meta.env.VITE_API_TOKEN;
         if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
         }
