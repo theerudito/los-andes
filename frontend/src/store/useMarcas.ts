@@ -43,7 +43,7 @@ export const useMarcas = create<Data>((set, get) => ({
     },
 
     ObtenerMarca: async (id?: number) => {
-        const marca_id = id || get().listar_marca.marca_id;
+        const marca_id = id || get().form_marca.marca_id;
         if (!marca_id) return;
 
         set({ isLoading: true });
