@@ -5,10 +5,10 @@ import {
     Home,
     Users,
     Laptop,
-    Settings,
+
     LayoutDashboard,
     LogOut,
-    ChevronDown, Bolt, Cpu, Timeline, LaptopMinimalCheck
+    ChevronDown, Bolt, Cpu
 } from 'lucide-react';
 
 import PaginaIndex from '../paginas/PaginaIndex';
@@ -16,10 +16,11 @@ import PaginaClientes from "../paginas/clientes/PaginaClientes.tsx";
 import PaginaEquipos from "../paginas/equipos/PaginaEquipos.tsx";
 import {useState} from "react";
 import * as React from "react";
-import PaginaHistorial from "../paginas/equipos/PaginaHistorial.tsx";
 import PaginaAuditoriaError from "../paginas/auditoria/PaginaAuditoriaError.tsx";
 import PaginaAuditoriaOk from "../paginas/auditoria/PaginaAuditoriaOk.tsx";
 import PaginaUsuarios from "../paginas/configuracion/PaginaUsuarios.tsx";
+import {useUsuarios} from "../store/useUsuarios.ts";
+import {ObtenerToken} from "../helpers/jwtDedoce.ts";
 
 export interface SubNavItem {
     label: string;
@@ -96,16 +97,15 @@ export const navItems: NavItem[] = [
 export default function Sidebar(): React.ReactElement {
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+    const { Logout } = useUsuarios((state) => state);
+
+    const nombre = ObtenerToken();
 
     const toggleSidebar = (): void => setIsOpen(!isOpen);
     const closeSidebar = (): void => setIsOpen(false);
 
     const toggleSubmenu = (label: string): void => {
         setOpenSubmenu(openSubmenu === label ? null : label);
-    };
-
-    const handleLogout = (): void => {
-        console.log("Cerrando sesión...");
     };
 
     const linkStyle = ({ isActive }: { isActive: boolean }): string =>
@@ -166,7 +166,7 @@ export default function Sidebar(): React.ReactElement {
                                             className="w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <IconComponent className="w-5 h-5 shrink-0" />
+                                                <IconComponent  />
                                                 <span>{item.label}</span>
                                             </div>
                                             <ChevronDown
@@ -201,7 +201,7 @@ export default function Sidebar(): React.ReactElement {
                                     className={linkStyle}
                                     onClick={closeSidebar}
                                 >
-                                    <IconComponent className="w-5 h-5 shrink-0" />
+                                    <IconComponent />
                                     <span>{item.label}</span>
                                 </NavLink>
                             );
@@ -216,12 +216,12 @@ export default function Sidebar(): React.ReactElement {
                                 U
                             </div>
                             <div className="truncate">
-                                <p className="text-sm font-medium text-gray-700 truncate">Jorge Loor</p>
+                                <p className="text-sm font-medium text-gray-700 truncate">{nombre?.name}</p>
                             </div>
                         </div>
 
                         <button
-                            onClick={handleLogout}
+                            onClick={Logout}
                             className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                             title="Cerrar sesión"
                             aria-label="Cerrar sesión"

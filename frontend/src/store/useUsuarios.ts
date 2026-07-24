@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {Usuario, UsuarioLogin} from "../modelos/usuarios.ts";
 import {usuarioService} from "../servicios/usuarioServicio.ts";
 import { toast } from "sonner";
+import {ObtenerToken} from "../helpers/jwtDedoce.ts";
 
 const initialUsuario = (): Usuario => ({
     usuario_id: 0,
@@ -50,7 +51,7 @@ export const useUsuarios = create<Data>((set, get) => ({
                 set({ listar_usuario: [], isLoading: false });
             }
         } catch (error: any) {
-            console.error("Error al obtener lista de marcas:", error.message);
+            console.error("Error al obtener lista de usuarios:", error.message);
             set({ listar_usuario: [], isLoading: false });
         }
     },
@@ -64,7 +65,7 @@ export const useUsuarios = create<Data>((set, get) => ({
             const data = await usuarioService.getUsuarioById(usuario_id);
             set({ form_usuario: data, isEditing: true, isLoading: false });
         } catch (error) {
-            console.error(`Error al consultar marca ID ${usuario_id}:`, error);
+            console.error(`Error al consultar el usuario ID ${usuario_id}:`, error);
             set({ isLoading: false });
         }
     },
@@ -72,6 +73,7 @@ export const useUsuarios = create<Data>((set, get) => ({
     EnviarUsuario: async () => {
         const { form_usuario, isEditing, ObtenerUsuarios, reset } = get();
         set({ isLoading: true });
+
         try {
             const payload: Usuario = {
                 activo: form_usuario.activo,
@@ -88,34 +90,39 @@ export const useUsuarios = create<Data>((set, get) => ({
             };
 
             if (isEditing) {
-                await usuarioService.modificarUsuario(payload);
+                const data = await usuarioService.modificarUsuario(payload);
+                toast.success(data.message);
             } else {
-                await usuarioService.crearUsuario(payload);
+                const data = await usuarioService.crearUsuario(payload);
+                toast.success(data.message);
             }
 
             reset();
 
             await ObtenerUsuarios();
 
-        } catch (error) {
-            console.error(isEditing == true ? "Error al modificar el usuario:" : "Error al crear el usuario", error);
+        } catch (error: any) {
+            toast.error(error?.message);
             set({ isLoading: false });
         }
     },
 
     EliminarUsuario: async (id: number) => {
+
+        const usuario = ObtenerToken()
+
+        if (usuario.user_id === id) {
+            toast.info("No es posible borrar a un usuario ya logeado");
+            return;
+        }
+
         set({ isLoading: true });
         try {
-            await usuarioService.eliminarUsuario(id);
+            const data = await usuarioService.eliminarUsuario(id);
             await get().ObtenerUsuarios();
-            toast.success("Usuario eliminado exitosamente");
+            toast.success(data.message);
         } catch (error: any) {
-            const mensajeError =
-                error?.response?.data?.message ||
-                error?.message ||
-                "Error al eliminar el usuario";
-
-            toast.error(mensajeError);
+            toast.error(error?.message);
         } finally {
             set({ isLoading: false });
         }
@@ -124,20 +131,20 @@ export const useUsuarios = create<Data>((set, get) => ({
     LoginUsuario: async (usuario: UsuarioLogin) => {
         try {
             const data =  await usuarioService.login(usuario);
-            console.log(data)
             localStorage.setItem("token", data.message);
             set({ isLogin: true });
-            toast.success("Usuario eliminado correctamente");
-        } catch (error) {
-            //console.error(`Error al eliminar usuario ID ${id}:`, error);
+            toast.success("Logueo Correctamente");
+        } catch (error: any) {
+            toast.error(error?.message);
         }
     },
 
     ResetUsuario: async (usuario: UsuarioLogin) => {
         try {
             await usuarioService.resetPassword(usuario);
-        } catch (error) {
-            //console.error(`Error al eliminar usuario ID ${id}:`, error);
+            toast.success("Contraseña Reseteada Correctamente");
+        } catch (error: any) {
+            toast.error(error?.message);
         }
     },
 
@@ -148,7 +155,7 @@ export const useUsuarios = create<Data>((set, get) => ({
 
     reset: () =>
         set({
-            form_marca: initialUsuario(),
+            form_usuario: initialUsuario(),
             isEditing: false,
             isLoading: false,
         }),

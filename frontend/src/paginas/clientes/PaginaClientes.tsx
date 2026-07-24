@@ -153,9 +153,9 @@ export default function PaginaClientes(): React.ReactElement {
                         <tbody className="divide-y divide-gray-100">
                         {listar_clientes.length > 0 ? (
                             listar_clientes.map((cliente) => (
-                                <tr key={cliente.marca_id} className="hover:bg-gray-50/80 transition-colors">
+                                <tr key={cliente.cliente_id} className="hover:bg-gray-50/80 transition-colors">
                                     <td className="px-4 py-3.5 font-medium text-gray-900">
-                                        #{cliente.marca_id}
+                                        #{cliente.cliente_id}
                                     </td>
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                         <div className="font-medium text-gray-800">{cliente.identificacion}</div>
@@ -197,7 +197,7 @@ export default function PaginaClientes(): React.ReactElement {
                                 </tr>
                             ))
                         ) : (
-                            <tr>
+                            <tr >
                                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                                     No se encontraron clientes registrados.
                                 </td>

@@ -1,19 +1,7 @@
 import { create } from "zustand";
-import type {ReqCliente} from "../modelos/clientes.ts";
+import type {Cliente, ReqCliente} from "../modelos/clientes.ts";
 import {clienteService} from "../servicios/clienteServicio.ts";
-
-export interface Cliente {
-    cliente_id: number;
-    identificacion: string;
-    tipo_identificacion: string;
-    nombres: string;
-    apellidos: string;
-    telefono: string;
-    email: string;
-    direccion: string;
-    fecha_creacion: string;
-    fecha_modificacion: string;
-}
+import {toast} from "sonner";
 
 const initialCliente = (): Cliente => ({
     cliente_id: 0,
@@ -95,15 +83,19 @@ export const useClientes = create<Data>((set, get) => ({
             };
 
             if (isEditing) {
-                await clienteService.modificarCliente(payload);
+                const data =  await clienteService.modificarCliente(payload);
+                toast.success(data.message);
             } else {
-                await clienteService.crearCliente(payload);
+                const data = await clienteService.crearCliente(payload);
+                toast.success(data.message);
             }
 
             reset();
+
             await ObtenerClientes();
-        } catch (error) {
-            console.error("Error al guardar cliente:", error);
+
+        } catch (error: any) {
+            toast.error(error?.message);
             set({ isLoading: false });
         }
     },
@@ -111,16 +103,16 @@ export const useClientes = create<Data>((set, get) => ({
     EliminarCliente: async (id: number) => {
         set({ isLoading: true });
         try {
-            await clienteService.eliminarCliente(id);
+            const data = await clienteService.eliminarCliente(id);
             await get().ObtenerClientes();
-        } catch (error) {
-            console.error(`Error al eliminar cliente ID ${id}:`, error);
+            toast.success(data.message);
+        } catch (error: any) {
+            toast.error(error?.message);
             set({ isLoading: false });
         }
     },
 
     DescargarPdf: async (req: ReqCliente) => {
-        console.log(req)
         try {
             await clienteService.reporteClientePdf(req);
         } catch (error) {

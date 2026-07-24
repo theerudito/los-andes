@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {Marca} from "../modelos/marcas.ts";
 import {marcaService} from "../servicios/marcaServicio.ts";
+import {toast} from "sonner";
 
 const initialMarca = (): Marca => ({
     marca_id: 0,
@@ -28,6 +29,10 @@ export const useMarcas = create<Data>((set, get) => ({
     isLoading: false,
 
     ObtenerMarcas: async () => {
+
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
         set({ isLoading: true });
         try {
             const data = await marcaService.getMarcas();
@@ -50,7 +55,7 @@ export const useMarcas = create<Data>((set, get) => ({
         try {
             const data = await marcaService.getMarcaById(marca_id);
             set({ form_marca: data, isEditing: true, isLoading: false });
-        } catch (error) {
+        } catch (error: any) {
             console.error(`Error al consultar marca ID ${marca_id}:`, error);
             set({ isLoading: false });
         }
@@ -68,17 +73,19 @@ export const useMarcas = create<Data>((set, get) => ({
             };
 
             if (isEditing) {
-                await marcaService.modificarMarca(payload);
+                const data = await marcaService.modificarMarca(payload);
+                toast.success(data.message);
             } else {
-                await marcaService.crearMarca(payload);
+                const data = await marcaService.crearMarca(payload);
+                toast.success(data.message);
             }
 
             reset();
 
             await ObtenerMarcas();
 
-        } catch (error) {
-            console.error(isEditing == true ? "Error al modificar la marca:" : "Error al crear la marca", error);
+        } catch (error: any) {
+            toast.error(error?.message);
             set({ isLoading: false });
         }
     },
@@ -86,10 +93,11 @@ export const useMarcas = create<Data>((set, get) => ({
     EliminarMarca: async (id: number) => {
         set({ isLoading: true });
         try {
-            await marcaService.eliminarMarca(id);
+            const data = await marcaService.eliminarMarca(id);
             await get().ObtenerMarcas();
-        } catch (error) {
-            console.error(`Error al eliminar marca ID ${id}:`, error);
+            toast.success(data.message);
+        } catch (error: any) {
+            toast.error(error?.message);
             set({ isLoading: false });
         }
     },

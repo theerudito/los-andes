@@ -211,6 +211,10 @@ func ModificarMarca(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
+	if marca.MarcaId == 1 {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"message": "no es posible modificar este registro"})
+	}
+
 	claims, err = helpers.ReadClaims(c)
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error al leer los clains "+err.Error())
@@ -227,10 +231,6 @@ func ModificarMarca(c *fiber.Ctx) error {
 
 		_ = helpers.InsertLogsError(conn, "marcas", "error ejecutando la consulta "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
-	}
-
-	if MarcaId == 1 {
-		return c.Status(409).JSON(fiber.Map{"message": "no es posible borrar este registro"})
 	}
 
 	tx, err = conn.Begin()
@@ -278,67 +278,61 @@ func ModificarMarca(c *fiber.Ctx) error {
 func EliminarMarca(c *fiber.Ctx) error {
 
 	var (
-		MarcaId int
-		conn    = database.GetDB()
-		err     error
-		tx      *sql.Tx
-		claims  *models.CustomClaims
+		conn   = database.GetDB()
+		err    error
+		tx     *sql.Tx
+		claims *models.CustomClaims
+		existe bool
 	)
-
-	claims, err = helpers.ReadClaims(c)
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "marcas", "error al leer los clains "+err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
-	}
 
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM marcas WHERE marca_id = ?`, id).Scan(&MarcaId)
-
-	if err != nil {
-
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
-		}
-
-		_ = helpers.InsertLogsError(conn, "marcas", "error ejecutando la consulta "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
-
+	if id == 1 {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"message": "no es posible borrar este registro"})
 	}
 
-	if MarcaId == 1 {
-		return c.Status(409).JSON(fiber.Map{"message": "no es posible borrar este registro"})
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "marcas", "error al leer los claims "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "error al leer los claims"})
+	}
+
+	err = conn.QueryRow(`SELECT EXISTS(SELECT 1 FROM marcas WHERE marca_id = ?)`, id).Scan(&existe)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "marcas", "error ejecutando la consulta "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error ejecutando la consulta"})
+	}
+
+	if !existe {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
 	}
 
 	tx, err = conn.Begin()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error iniciando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error iniciando transacción"})
 	}
 
 	defer tx.Rollback()
 
 	_, err = tx.Exec(`DELETE FROM marcas WHERE marca_id = ?`, id)
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error eliminando el registro "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error eliminando el registro"})
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"message": "no es posible eliminar, la marca está siendo utilizada en otro registro"})
 	}
 
 	err = helpers.InsertLogs(tx, "DELETE", "marcas", claims.Name, "registro eliminado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error insertando la auditoria"})
 	}
 
 	err = tx.Commit()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "marcas", "error confirmando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error confirmando transacción"})
 	}
 
-	return c.Status(200).JSON(fiber.Map{"message": "registro eliminado correctamente"})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "registro eliminado correctamente"})
 
 }

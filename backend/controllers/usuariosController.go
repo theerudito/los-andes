@@ -316,25 +316,26 @@ func ModificarUsuario(c *fiber.Ctx) error {
 		usuario   models.Usuarios
 		tx        *sql.Tx
 		claims    *models.CustomClaims
+		passHash  string
 	)
 
 	if err = c.BodyParser(&usuario); err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "Cuerpo de solicitud inválido")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cuerpo de solicitud inválido"})
 	}
 
 	if usuario.UsuarioId == 1 {
-		return c.Status(409).JSON(fiber.Map{"error": "no es posible modificar el usuario sistema"})
+		return c.Status(409).JSON(fiber.Map{"message": "no es posible modificar el usuario sistema"})
 	}
 
 	claims, err = helpers.ReadClaims(c)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "usuarios", "error al leer los clains "+err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+		_ = helpers.InsertLogsError(conn, "usuarios", "error al leer los claims "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "error al leer los claims"})
 	}
 
 	if claims.Rol == "TECNICO" || claims.Rol == "VENDEDOR" {
-		return c.Status(409).JSON(fiber.Map{"messaje": "solo usuarios administrador puenden realizar esta accion"})
+		return c.Status(409).JSON(fiber.Map{"message": "solo usuarios administrador pueden realizar esta accion"})
 	}
 
 	err = conn.QueryRow(`SELECT usuario_id FROM usuarios WHERE usuario_id = ?`, usuario.UsuarioId).Scan(&UsuarioId)
@@ -349,32 +350,43 @@ func ModificarUsuario(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
 	}
 
+	if usuario.Password != "" {
+		passHash, err = helpers.EncriptarDato(usuario.Password)
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "usuarios", "error encriptando contraseña "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error encriptando contraseña"})
+		}
+	}
+
 	tx, err = conn.Begin()
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "error iniciando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error iniciando transacción"})
 	}
 
 	defer tx.Rollback()
 
 	_, err = tx.Exec(`
 		UPDATE usuarios 
-		SET identificacion 				= ?,
-			  tipo_identificacion 	= ?,
-				nombres 							= ?,
-				apellidos 						= ?,
-				email 								= ?,
-				activo 								= ?,
-				rol_id								= ?,
-				fecha_modificacion 		= ?
+		SET identificacion      = ?,
+			tipo_identificacion = ?,
+			nombres             = ?,
+			apellidos           = ?,
+			email               = ?,
+			password            = CASE WHEN ? = '' THEN password ELSE ? END,
+			activo              = ?,
+			rol_id              = ?,
+			fecha_modificacion  = ?
 		WHERE 
-			usuario_id 				  		= ?`,
+			usuario_id          = ?`,
 		usuario.Identificacion,
 		helpers.TipoIdentificacion(usuario.Identificacion),
 		strings.ToUpper(usuario.Nombres),
 		strings.ToUpper(usuario.Apellidos),
 		usuario.Email,
+		usuario.Password,
+		passHash,
 		true,
 		usuario.RolId,
 		helpers.FechaActual(),
@@ -382,24 +394,24 @@ func ModificarUsuario(c *fiber.Ctx) error {
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "error actualizando el registro "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error actualizando el registro"})
+		return c.Status(500).JSON(fiber.Map{"message": "error actualizando el registro"})
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "error confirmando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error confirmando transacción"})
 	}
 
 	err = helpers.InsertLogs(conn, "UPDATE", "usuarios", claims.Name, "registro actualizado correctamente")
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
 	}
 
-	return c.Status(201).JSON(fiber.Map{"message": "registro actualizado correctamente"})
+	return c.Status(200).JSON(fiber.Map{"message": "registro actualizado correctamente"})
 
 }
 
@@ -498,16 +510,16 @@ func LoginUsuario(c *fiber.Ctx) error {
 			r.nombre AS rol
 		FROM usuarios AS u
 		INNER JOIN roles AS r ON u.rol_id = r.rol_id
-		WHERE identificacion = ?`,
-		login.Identificacion).Scan(
+		WHERE u.identificacion = ? OR u.email = ?`,
+		login.Identificacion, login.Identificacion).Scan(
 		&usuarioID,
 		&passwordDB,
 		&nombres,
 		&apellidos,
 		&rol)
 
-	if err == sql.ErrNoRows {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "usuario no existe"})
+	if errors.Is(err, sql.ErrNoRows) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "usuario no existe"})
 	}
 
 	if err != nil {
@@ -533,11 +545,9 @@ func LoginUsuario(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": token})
-
 }
 
 func ResetUsuario(c *fiber.Ctx) error {
-
 	var (
 		usuarioID int
 		conn      = database.GetDB()
@@ -545,7 +555,6 @@ func ResetUsuario(c *fiber.Ctx) error {
 		reset     models.UsuarioLogin
 		tx        *sql.Tx
 		passHash  string
-		claims    *models.CustomClaims
 	)
 
 	if err = c.BodyParser(&reset); err != nil {
@@ -553,28 +562,26 @@ func ResetUsuario(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Cuerpo de solicitud inválido"})
 	}
 
-	err = conn.QueryRow(`SELECT usuario_id FROM usuarios WHERE identificacion = ?`, reset.Identificacion).Scan(&usuarioID)
+	err = conn.QueryRow(`
+		SELECT usuario_id 
+		FROM usuarios 
+		WHERE identificacion = ? OR email = ?`,
+		reset.Identificacion, reset.Identificacion).Scan(&usuarioID)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "usuario no existe"})
+	}
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": err.Error()})
 	}
 
 	if usuarioID == 1 {
-		return c.Status(409).JSON(fiber.Map{"message": "no es posible modificar la contraseña de este usuario"})
-	}
-
-	claims, err = helpers.ReadClaims(c)
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "usuarios", "error al leer los clains "+err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
-	}
-
-	if claims.Rol == "TECNICO" || claims.Rol == "VENDEDOR" {
-		return c.Status(409).JSON(fiber.Map{"messaje": "solo usuario administrador puenden realizar esta accion"})
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"message": "no es posible modificar la contraseña de este usuario"})
 	}
 
 	tx, err = conn.Begin()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error iniciando transacción"})
@@ -606,19 +613,16 @@ func ResetUsuario(c *fiber.Ctx) error {
 	}
 
 	err = tx.Commit()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error confirmando transacción"})
 	}
 
-	err = helpers.InsertLogs(conn, "UPDATE", "usuarios", claims.Name, "contraseña actualizada correctamente")
-
+	err = helpers.InsertLogs(conn, "UPDATE", "usuarios", reset.Identificacion, "contraseña actualizada por restablecimiento")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error insertando la auditoría"})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "contraseña actualizada correctamente"})
-
 }

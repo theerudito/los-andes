@@ -3,12 +3,13 @@ import type {Usuario, UsuarioLogin} from "../modelos/usuarios.ts";
 
 export const usuarioService = {
     // Públicos
-    login: async (payload: UsuarioLogin) => {
-        const { data } = await api.post('/usuario/login', payload);
+    login: async (datos: UsuarioLogin) => {
+        const { data } = await api.post('/usuario/login', datos);
         return data;
     },
-    resetPassword: async (payload: UsuarioLogin) => {
-        const { data } = await api.put('/usuario/reset', payload);
+
+    resetPassword: async (datos: UsuarioLogin) => {
+        const { data } = await api.put('/usuario/reset', datos);
         return data;
     },
 

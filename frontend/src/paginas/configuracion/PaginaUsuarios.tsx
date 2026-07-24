@@ -17,6 +17,11 @@ export default function PaginaUsuarios(): React.ReactElement {
         u.email.toLowerCase().includes(busqueda.toLowerCase())
     );
 
+    function VerUsuario (id: number) {
+        OpenModal(ModalLista.modal_usuario)
+        ObtenerUsuario(id)
+    }
+
     useEffect(() => {
         ObtenerUsuarios();
     }, []);
@@ -101,7 +106,7 @@ export default function PaginaUsuarios(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
                                             <button
-                                                onClick={() => ObtenerUsuario(usuario.usuario_id)}
+                                                onClick={() => VerUsuario(usuario.usuario_id)}
                                                 className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
                                                 title="Editar usuario"
                                             >

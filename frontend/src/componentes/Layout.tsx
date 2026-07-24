@@ -1,9 +1,21 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import * as React from "react";
+import React, { useEffect } from "react";
+import {useUsuarios} from "../store/useUsuarios.ts";
 
-export default function Layout(): React.ReactElement {
+export default function Layout(): React.ReactElement | null {
+    const navigate = useNavigate();
+    const { isLogin } = useUsuarios();
+
+    useEffect(() => {
+        if (!isLogin) {
+            navigate('/login');
+        }
+    }, [isLogin, navigate]);
+
+   if (!isLogin) return null;
+
     return (
         <div className="h-screen w-screen flex overflow-hidden bg-gray-50">
             <Sidebar />

@@ -17,7 +17,6 @@ export const clienteService = {
     },
     crearCliente: async (payload: Cliente) => {
         const { data } = await api.post('/cliente/', payload);
-        console.log(data)
         return data;
     },
     modificarCliente: async (payload: Cliente) => {
