@@ -1,5 +1,5 @@
 import api from "../helpers/fetching/axios.ts";
-import type {Cliente, ReqCliente} from "../modelos/clientes.ts";
+import type {Cliente, RPT_Clientes} from "../modelos/clientes.ts";
 
 export const clienteService = {
 
@@ -27,7 +27,7 @@ export const clienteService = {
         const { data } = await api.delete(`/cliente/${id}`);
         return data;
     },
-    reporteClientePdf: async (req: ReqCliente) => {
+    reporteClientePdf: async (req: RPT_Clientes) => {
         const response = await api.post('/cliente/reportes', req, { responseType: 'blob' });
         descargarBlob(response.data, 'reporte_clientes.pdf');
     },

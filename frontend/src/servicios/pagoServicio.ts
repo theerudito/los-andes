@@ -1,23 +1,37 @@
 import api from "../helpers/fetching/axios.ts";
-
-export interface ActualizarCuentaRequest {
-    equipo_id: number;
-    costo_total: number;
-    abono: number;
-    usuario_id: number;
-}
+import type {Cuenta} from "../modelos/pagos.ts";
 
 export const pagoService = {
-    consultarCuentaEquipo: async (equipoId: number) => {
-        const { data } = await api.get(`/pago/${equipoId}`);
+
+    consultarCuentas: async (equipoId: number) => {
+        const { data } = await api.get(`/pago/equipo/${equipoId}`);
         return data;
     },
-    actualizarCuentaEquipo: async (payload: ActualizarCuentaRequest) => {
+
+    consultarCuenta: async (id: number) => {
+        const { data } = await api.get(`/pago/${id}`);
+        return data;
+    },
+
+    crearCuenta: async (payload: Cuenta) => {
+        const { data } = await api.post('/pago/actualizar', payload);
+        return data;
+    },
+
+    actualizarCuenta: async (payload: Cuenta) => {
         const { data } = await api.put('/pago/actualizar', payload);
         return data;
     },
-    procesarEntregaEquipo: async (payload: Record<string, unknown>) => {
-        const { data } = await api.post('/pago/procesar', payload);
-        return data;
+
+    reporteCuentaPdf: async (id: number) => {
+        const response = await api.get(`/pago/pdf/${id}`, { responseType: 'blob' });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `reporte_pagos.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
     },
+
 };

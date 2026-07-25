@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type {Cliente, ReqCliente} from "../modelos/clientes.ts";
+import type {Cliente, RPT_Clientes} from "../modelos/clientes.ts";
 import {clienteService} from "../servicios/clienteServicio.ts";
 import {toast} from "sonner";
 
@@ -25,7 +25,7 @@ type Data = {
     ObtenerCliente: (id?: number) => Promise<void>;
     EnviarCliente: () => Promise<void>;
     EliminarCliente: (id: number) => Promise<void>;
-    DescargarPdf: (req: ReqCliente) => Promise<void>;
+    DescargarPdf: (req: RPT_Clientes) => Promise<void>;
     reset: () => void;
 };
 
@@ -112,7 +112,7 @@ export const useClientes = create<Data>((set, get) => ({
         }
     },
 
-    DescargarPdf: async (req: ReqCliente) => {
+    DescargarPdf: async (req: RPT_Clientes) => {
         try {
             await clienteService.reporteClientePdf(req);
         } catch (error) {

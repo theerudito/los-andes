@@ -13,7 +13,6 @@ import ModalHistorial from "./modales/ModalHistorial.tsx";
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
-            <ModalMarcas/>
             <ModalCliente/>
             <ModalEquipos/>
             <ModalUsuario/>

@@ -12,7 +12,7 @@ import {
 import {useModal} from "../../store/useModal.ts";
 import {ModalLista} from "../../helpers/ModalLista.ts";
 import {useClientes} from "../../store/useClientes.ts";
-import type {ReqCliente} from "../../modelos/clientes.ts";
+import type {RPT_Clientes} from "../../modelos/clientes.ts";
 
 export default function PaginaClientes(): React.ReactElement {
     const {OpenModal} = useModal((state) => state);
@@ -32,7 +32,7 @@ export default function PaginaClientes(): React.ReactElement {
     }
 
     function VerReporte() {
-        const obj: ReqCliente = {
+        const obj: RPT_Clientes = {
             fecha_desde: fechaDesde,
             fecha_hasta: fechaHasta
         };

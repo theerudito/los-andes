@@ -18,12 +18,11 @@ import (
 func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 
 	var (
-		conn    = database.GetDB()
-		rows    *sql.Rows
-		err     error
-		entrega models.EntregaDTO
-		id      int
-		found   = false
+		conn     = database.GetDB()
+		rows     *sql.Rows
+		err      error
+		entregas []models.EntregaDTO
+		id       int
 	)
 
 	id, err = strconv.Atoi(c.Params("id"))
@@ -33,19 +32,20 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 	}
 
 	rows, err = conn.Query(`
-    SELECT 
-      en.entrega_id,
-      COALESCE(strftime('%d/%m/%Y %H:%M:%S', en.fecha_entrega), '') AS fecha_entrega,
-      en.trabajos_realizados,
-      en.estado_final_equipo,
-      en.conformidad_cliente,
-      en.comprobante_nro,
-      eq.codigo,
-      (u.nombres || ' ' || u.apellidos) AS nombres
-    FROM entregas en
-    INNER JOIN equipos eq ON en.equipo_id = eq.equipo_id
-    INNER JOIN usuarios u ON en.usuario_id = u.usuario_id
-    WHERE en.equipo_id = ?`, id)
+		SELECT 
+		  en.entrega_id,
+		  eq.equipo_id,
+		  COALESCE(strftime('%d/%m/%Y %H:%M:%S', en.fecha_entrega), '') AS fecha_entrega,
+		  en.trabajos_realizados,
+		  en.estado_final_equipo,
+		  en.conformidad_cliente,
+		  en.comprobante_nro,
+		  eq.codigo,
+		  (u.nombres || ' ' || u.apellidos) AS nombres
+		FROM entregas en
+		INNER JOIN equipos eq ON en.equipo_id = eq.equipo_id
+		INNER JOIN usuarios u ON en.usuario_id = u.usuario_id
+		WHERE en.equipo_id = ?`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "usuarios", "Error al ejecutar la consulta "+err.Error())
@@ -55,8 +55,10 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 	defer rows.Close()
 
 	for rows.Next() {
+		var entrega models.EntregaDTO
 		err = rows.Scan(
 			&entrega.EntregaId,
+			&entrega.EquipoId,
 			&entrega.FechaEntrega,
 			&entrega.TrabajosRealizados,
 			&entrega.EstadoFinalEquipo,
@@ -70,15 +72,15 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
-		found = true
+		entregas = append(entregas, entrega)
 
 	}
 
-	if !found {
+	if len(entregas) == 0 {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
 	}
 
-	return c.JSON(entrega)
+	return c.JSON(entregas)
 
 }
 

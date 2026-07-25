@@ -8,6 +8,7 @@ export interface CuentaDTO {
 }
 
 export interface Cuenta {
+    cuenta_id: number;
     equipo_id: number;
     costo_total: number;
     abono: number;

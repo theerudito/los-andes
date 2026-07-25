@@ -14,11 +14,10 @@ import (
 
 func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 	var (
-		conn   = database.GetDB()
-		cuenta models.CuentaDTO
-		rows   *sql.Rows
-		err    error
-		found  = false
+		conn    = database.GetDB()
+		cuentas []models.CuentaDTO
+		rows    *sql.Rows
+		err     error
 	)
 
 	id, err := strconv.Atoi(c.Params("id"))
@@ -47,6 +46,7 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 	defer rows.Close()
 
 	for rows.Next() {
+		var cuenta models.CuentaDTO
 		err = rows.Scan(
 			&cuenta.CuentaId,
 			&cuenta.EquipoId,
@@ -60,15 +60,15 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
-		found = true
+		cuentas = append(cuentas, cuenta)
 
 	}
 
-	if !found {
+	if len(cuentas) == 0 {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
 	}
 
-	return c.JSON(cuenta)
+	return c.JSON(cuentas)
 
 }
 

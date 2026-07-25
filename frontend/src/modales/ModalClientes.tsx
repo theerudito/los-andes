@@ -10,7 +10,7 @@ export default function ModalCliente(): React.ReactElement | null {
     const { form_cliente, EnviarCliente } = useClientes((state) => state);
 
     const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name } = e.target;
+        const {name} = e.target;
 
         const value = e.target.value;
 

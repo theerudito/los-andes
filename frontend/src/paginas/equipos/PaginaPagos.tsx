@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Pencil,
@@ -8,56 +8,33 @@ import {
     ArrowLeft,
     CreditCard,
     CheckCircle2,
-    Clock, PrinterCheck
+    Clock, PrinterCheck, Plus
 } from 'lucide-react';
 import { useModal } from '../../store/useModal.ts';
 import { ModalLista } from '../../helpers/ModalLista.ts';
-
-export interface CuentaDTO {
-    cuenta_id: number;
-    equipo_id: number;
-    equipo_codigo: string;
-    costo_total: number;
-    abono: number;
-    saldo: number;
-}
-
-const cuentasIniciales: CuentaDTO[] = [
-    {
-        cuenta_id: 2,
-        equipo_id: 2,
-        equipo_codigo: "E00002",
-        costo_total: 25,
-        abono: 25,
-        saldo: 0
-    },
-    {
-        cuenta_id: 3,
-        equipo_id: 3,
-        equipo_codigo: "E00003",
-        costo_total: 60,
-        abono: 20,
-        saldo: 40
-    }
-];
+import {usePagos} from "../../store/usePagos.ts";
 
 export default function PaginaPagos(): React.ReactElement {
     const { OpenModal } = useModal((state) => state);
+    const { ObtenerPagos, ObtenerPago, DescargarPdf, listar_pagos, setEquipoId } = usePagos((state) => state);
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    // Captura estricta del equipo_id desde la URL
-    const [searchParams] = useSearchParams();
-    const equipoIdParam = searchParams.get('equipo_id');
+    const equipo_id = searchParams.get('equipo_id');
 
-    const [cuentas] = useState<CuentaDTO[]>(cuentasIniciales);
+    useEffect(() => {
+        if (equipo_id) {
+            setEquipoId(Number(equipo_id));
+        }
+        ObtenerPagos();
+    }, [equipo_id]);
+
     const [busqueda, setBusqueda] = useState<string>('');
 
-    // Filtrado de la tabla únicamente por equipo_id de la URL
-    const cuentasFiltradas = cuentas.filter((c) => {
-        return equipoIdParam ? c.equipo_id === Number(equipoIdParam) : true;
+    const cuentasFiltradas = listar_pagos.filter((c) => {
+        return equipo_id ? c.equipo_id === Number(equipo_id) : true;
     });
 
-    // Totales acumulados
     const totalCosto = cuentasFiltradas.reduce((acc, c) => acc + c.costo_total, 0);
     const totalAbonos = cuentasFiltradas.reduce((acc, c) => acc + c.abono, 0);
     const totalSaldo = cuentasFiltradas.reduce((acc, c) => acc + c.saldo, 0);
@@ -66,20 +43,8 @@ export default function PaginaPagos(): React.ReactElement {
         navigate(-1);
     };
 
-    const handleLimpiar = () => setBusqueda('');
-
-    const handleBuscar = () => {
-        console.log("Buscando cuentas para equipo_id:", equipoIdParam, "con filtro:", busqueda);
-    };
-
-
-    const handleGenerarPDFRecibo = (cuenta: CuentaDTO) => {
-        console.log("Generando recibo PDF para la cuenta ID:", cuenta.cuenta_id);
-    };
-
     return (
         <div className="space-y-6 w-full">
-            {/* Encabezado Superior */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-full">
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -88,13 +53,12 @@ export default function PaginaPagos(): React.ReactElement {
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-gray-800">
-                                Gestión de Cuentas y Pagos {equipoIdParam && `(Equipo #${equipoIdParam})`}
+                                Gestión de Cuentas y Pagos {equipo_id && `(Equipo #${equipo_id})`}
                             </h1>
                             <p className="text-xs text-gray-500 mt-0.5">Control de costos totales, abonos y saldos pendientes</p>
                         </div>
                     </div>
 
-                    {/* Botón Regresar */}
                     <button
                         onClick={handleRegresar}
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm shrink-0 cursor-pointer"
@@ -105,10 +69,8 @@ export default function PaginaPagos(): React.ReactElement {
                     </button>
                 </div>
 
-                {/* Barra de Búsqueda y Botones */}
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
 
-                    {/* Input de Búsqueda */}
                     <div className="relative flex-1 min-w-[240px] max-w-md">
                         <input
                             type="text"
@@ -119,10 +81,9 @@ export default function PaginaPagos(): React.ReactElement {
                         />
                     </div>
 
-                    {/* Grupo de Botones */}
                     <div className="flex flex-wrap items-center gap-2">
                         <button
-                            onClick={handleLimpiar}
+
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm cursor-pointer"
                             title="Limpiar búsqueda"
                         >
@@ -131,18 +92,25 @@ export default function PaginaPagos(): React.ReactElement {
                         </button>
 
                         <button
-                            onClick={handleBuscar}
+
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm cursor-pointer"
                         >
                             <Search className="w-3.5 h-3.5" />
                             <span>Buscar</span>
+                        </button>
+
+                        <button
+                            onClick={() => OpenModal(ModalLista.modal_pago)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Nuevo Pago</span>
                         </button>
                     </div>
 
                 </div>
             </div>
 
-            {/* Tabla de Cuentas */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto w-full">
                     <table className="w-full min-w-full text-left text-sm text-gray-600">
@@ -164,32 +132,26 @@ export default function PaginaPagos(): React.ReactElement {
                             cuentasFiltradas.map((cuenta) => (
                                 <tr key={cuenta.cuenta_id} className="hover:bg-gray-50/80 transition-colors text-xs">
 
-                                    {/* Cuenta ID */}
                                     <td className="px-4 py-3.5 font-bold text-gray-900">
                                         #{cuenta.cuenta_id}
                                     </td>
 
-                                    {/* Código Equipo */}
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
                                         {cuenta.equipo_codigo}
                                     </td>
 
-                                    {/* Costo Total */}
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 text-right whitespace-nowrap">
                                         ${cuenta.costo_total.toFixed(2)}
                                     </td>
 
-                                    {/* Abono */}
                                     <td className="px-4 py-3.5 font-bold text-emerald-600 text-right whitespace-nowrap">
                                         ${cuenta.abono.toFixed(2)}
                                     </td>
 
-                                    {/* Saldo */}
                                     <td className="px-4 py-3.5 font-bold text-red-600 text-right whitespace-nowrap">
                                         ${cuenta.saldo.toFixed(2)}
                                     </td>
 
-                                    {/* Estado del Pago Badge */}
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         {cuenta.saldo === 0 ? (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
@@ -204,12 +166,12 @@ export default function PaginaPagos(): React.ReactElement {
                                         )}
                                     </td>
 
-                                    {/* Acciones */}
+
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
 
                                             <button
-                                                onClick={() => handleGenerarPDFRecibo(cuenta)}
+
                                                 className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 cursor-pointer"
                                                 title="Descargar Comprobante / Recibo PDF"
                                             >
@@ -240,7 +202,6 @@ export default function PaginaPagos(): React.ReactElement {
                     </table>
                 </div>
 
-                {/* Pie de Tabla con Resumen Monetario */}
                 <div className="p-3 border-t border-gray-100 text-xs text-gray-600 flex flex-wrap justify-between items-center bg-gray-50/50 gap-2">
                     <span>Total registros: <strong className="text-gray-800">{cuentasFiltradas.length}</strong></span>
 

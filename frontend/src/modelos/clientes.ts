@@ -11,7 +11,7 @@ export interface Cliente {
     fecha_modificacion: string;
 }
 
-export interface ReqCliente {
+export interface RPT_Clientes {
     fecha_desde: string;
     fecha_hasta: string;
 }

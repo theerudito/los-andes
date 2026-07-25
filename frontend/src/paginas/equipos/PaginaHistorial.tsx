@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, {useEffect, useState} from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Pencil,
     Trash2,
@@ -11,79 +11,32 @@ import {
     Filter,
     ArrowLeft,
     Plus,
-    Tag
 } from 'lucide-react';
 import { useModal } from '../../store/useModal.ts';
 import { ModalLista } from '../../helpers/ModalLista.ts';
-
-export interface HistorialReparacionesDTO {
-    historial_id: number;
-    observaciones_tecnicas: string;
-    fecha: string;
-    equipo_id: number;
-    equipo: string;
-    serie: string;
-    estado_id: number;
-    estado: string;
-    usuario_id: number;
-    nombres_usuario: string;
-    apellidos_usuario: string;
-    cliente_id: number;
-    nombres_cliente: string;
-    apellidos_cliente: string;
-}
-
-const historialInicial: HistorialReparacionesDTO[] = [
-    {
-        historial_id: 1,
-        observaciones_tecnicas: "Se realizó cambio de pasta térmica y limpieza general de componentes internos.",
-        fecha: "2026-07-21 09:15",
-        equipo_id: 101,
-        equipo: "Laptop ThinkPad E14",
-        serie: "LNV-98765432",
-        estado_id: 2,
-        estado: "Reparado",
-        usuario_id: 2,
-        nombres_usuario: "Soporte",
-        apellidos_usuario: "Técnico",
-        cliente_id: 1,
-        nombres_cliente: "Juan Carlos",
-        apellidos_cliente: "Pérez Gómez"
-    },
-    {
-        historial_id: 2,
-        observaciones_tecnicas: "Diagnóstico inicial: Falla detectada en módulo de memoria RAM de 8GB.",
-        fecha: "2026-07-20 14:30",
-        equipo_id: 102,
-        equipo: "PC Escritorio Custom Gamer",
-        serie: "SN-PC-2026-99",
-        estado_id: 1,
-        estado: "En Revisión",
-        usuario_id: 1,
-        nombres_usuario: "Admin",
-        apellidos_usuario: "Sistema",
-        cliente_id: 2,
-        nombres_cliente: "Empresa Tech",
-        apellidos_cliente: "S.A."
-    }
-];
+import {useHistorial} from "../../store/useHistorial.ts";
 
 export default function PaginaHistorial(): React.ReactElement {
     const { OpenModal } = useModal((state) => state);
+    const { ObtenerHistoriales, ObtenerPago, DescargarPdf, listar_historial, setEquipoId } = useHistorial((state) => state);
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    // Captura del parámetro directamente de la ruta /equipos/:equipo_id/historial
-    const { equipo_id } = useParams<{ equipo_id: string }>();
+    const equipo_id = searchParams.get('equipo_id');
 
-    const [historial, setHistorial] = useState<HistorialReparacionesDTO[]>(historialInicial);
+    useEffect(() => {
+        if (equipo_id) {
+            setEquipoId(Number(equipo_id));
+        }
+        ObtenerHistoriales();
+    }, [equipo_id]);
+
     const [busqueda, setBusqueda] = useState<string>('');
 
-    // Estados para el reporte PDF por rango de fechas
     const [fechaDesde, setFechaDesde] = useState<string>('2026-07-01');
     const [fechaHasta, setFechaHasta] = useState<string>('2026-07-21');
 
-    // Filtrado de la tabla únicamente por equipo_id proveniente de la URL
-    const historialFiltrado = historial.filter((h) => {
+    const historialFiltrado = listar_historial.filter((h) => {
         return equipo_id ? h.equipo_id === Number(equipo_id) : true;
     });
 
@@ -95,25 +48,6 @@ export default function PaginaHistorial(): React.ReactElement {
 
     const handleBuscar = () => {
         console.log("Ejecutando búsqueda en historial para equipo_id:", equipo_id, "con filtro:", busqueda);
-    };
-
-    const handleActualizarHistorial = (item: HistorialReparacionesDTO) => {
-        console.log("Actualizar observación/historial ID:", item.historial_id);
-    };
-
-    const handleEliminar = (id: number) => {
-        if (confirm('¿Estás seguro de que deseas eliminar este registro del historial?')) {
-            setHistorial(historial.filter((h) => h.historial_id !== id));
-        }
-    };
-
-    const handleGenerarPDFHistorial = () => {
-        const payloadReporte = {
-            fecha_desde: fechaDesde,
-            fecha_hasta: fechaHasta,
-            equipo_id: equipo_id ? Number(equipo_id) : null
-        };
-        console.log("Generando Reporte PDF del Historial en Go:", payloadReporte);
     };
 
     const getBadgeEstado = (estado: string) => {
@@ -135,7 +69,6 @@ export default function PaginaHistorial(): React.ReactElement {
 
     return (
         <div className="space-y-6 w-full">
-            {/* Encabezado Superior */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-full">
                 <div className="flex items-center justify-between gap-4">
                     <div>
@@ -145,7 +78,6 @@ export default function PaginaHistorial(): React.ReactElement {
                         <p className="text-xs text-gray-500 mt-0.5">Seguimiento técnico y registros de intervenciones</p>
                     </div>
 
-                    {/* Botón Regresar */}
                     <button
                         onClick={handleRegresar}
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm shrink-0 cursor-pointer"
@@ -156,10 +88,8 @@ export default function PaginaHistorial(): React.ReactElement {
                     </button>
                 </div>
 
-                {/* Barra de Búsqueda y Botones abajo */}
                 <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
 
-                    {/* Input de Búsqueda */}
                     <div className="relative flex-1 min-w-[240px] max-w-md">
                         <input
                             type="text"
@@ -170,7 +100,6 @@ export default function PaginaHistorial(): React.ReactElement {
                         />
                     </div>
 
-                    {/* Grupo de Botones */}
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleLimpiarBusqueda}
@@ -192,7 +121,7 @@ export default function PaginaHistorial(): React.ReactElement {
 
                         <button
                             onClick={() => OpenModal(ModalLista.modal_historial)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Nuevo Historial</span>
@@ -202,7 +131,6 @@ export default function PaginaHistorial(): React.ReactElement {
                 </div>
             </div>
 
-            {/* BLOQUE DE REPORTES PDF */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 w-full flex flex-wrap items-center justify-between gap-4">
 
                 <div className="flex items-center gap-2 text-gray-700 font-semibold text-xs uppercase tracking-wider">
@@ -212,7 +140,6 @@ export default function PaginaHistorial(): React.ReactElement {
 
                 <div className="flex flex-wrap items-center gap-3">
 
-                    {/* Fecha Desde */}
                     <div className="flex items-center gap-2">
                         <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5 text-gray-400" /> Desde:
@@ -225,7 +152,6 @@ export default function PaginaHistorial(): React.ReactElement {
                         />
                     </div>
 
-                    {/* Fecha Hasta */}
                     <div className="flex items-center gap-2">
                         <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5 text-gray-400" /> Hasta:
@@ -240,9 +166,7 @@ export default function PaginaHistorial(): React.ReactElement {
 
                     <div className="w-[1px] h-6 bg-gray-200 hidden sm:block" />
 
-                    {/* Botón Descarga PDF */}
                     <button
-                        onClick={handleGenerarPDFHistorial}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                         title="Exportar Historial a PDF"
                     >
@@ -253,7 +177,6 @@ export default function PaginaHistorial(): React.ReactElement {
                 </div>
             </div>
 
-            {/* Tabla de Historial */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto w-full">
                     <table className="w-full min-w-full text-left text-sm text-gray-600">
@@ -279,31 +202,26 @@ export default function PaginaHistorial(): React.ReactElement {
                                         #{item.historial_id}
                                     </td>
 
-                                    {/* Equipo y Serie */}
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                         <div className="font-bold text-gray-800 text-sm">{item.equipo}</div>
                                         <div className="text-[11px] text-gray-400 font-mono">S/N: {item.serie}</div>
                                     </td>
 
-                                    {/* Cliente */}
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                         <div className="font-medium text-gray-800">{item.nombres_cliente} {item.apellidos_cliente}</div>
                                         <div className="text-[11px] text-gray-400">ID Cliente: #{item.cliente_id}</div>
                                     </td>
 
-                                    {/* Observaciones Técnicas */}
                                     <td className="px-4 py-3.5 max-w-xs truncate" title={item.observaciones_tecnicas}>
                                         <span className="text-gray-700">{item.observaciones_tecnicas || '-'}</span>
                                     </td>
 
-                                    {/* Estado */}
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                       <span className={`inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full border ${getBadgeEstado(item.estado)}`}>
                                         {item.estado}
                                       </span>
                                     </td>
 
-                                    {/* Técnico Responsable */}
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                         <div className="inline-flex items-center gap-1.5 text-xs text-gray-700 font-medium">
                                             <Wrench className="w-3.5 h-3.5 text-gray-400" />
@@ -311,12 +229,10 @@ export default function PaginaHistorial(): React.ReactElement {
                                         </div>
                                     </td>
 
-                                    {/* Fecha de registro */}
                                     <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-400">
                                         {item.fecha}
                                     </td>
 
-                                    {/* Acciones */}
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
                                             <button
@@ -327,7 +243,6 @@ export default function PaginaHistorial(): React.ReactElement {
                                                 <Pencil className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleEliminar(item.historial_id)}
                                                 className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 cursor-pointer"
                                                 title="Eliminar registro"
                                             >
@@ -348,7 +263,6 @@ export default function PaginaHistorial(): React.ReactElement {
                     </table>
                 </div>
 
-                {/* Pie de Tabla */}
                 <div className="p-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between items-center bg-gray-50/30">
                     <span>Total de registros: {historialFiltrado.length}</span>
                 </div>

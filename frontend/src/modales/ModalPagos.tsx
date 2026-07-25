@@ -13,6 +13,11 @@ import { ModalLista } from '../helpers/ModalLista.ts';
 export default function ModalPagos(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
 
+    const [costoTotal, setCostoTotal] = useState<string>('0');
+    const [abono, setAbono] = useState<string>('0');
+
+    const saldoPendiente = Math.max(0, Number(costoTotal || 0) - Number(abono || 0));
+
     if (modalName !== ModalLista.modal_pago) return null;
 
     return (
@@ -73,6 +78,8 @@ export default function ModalPagos(): React.ReactElement | null {
                                 step="0.01"
                                 min="0"
                                 name="costo_total"
+                                value={costoTotal}
+                                onChange={(e) => setCostoTotal(e.target.value)}
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-bold shadow-sm"
                             />
@@ -87,6 +94,8 @@ export default function ModalPagos(): React.ReactElement | null {
                                 step="0.01"
                                 min="0"
                                 name="abono"
+                                value={abono}
+                                onChange={(e) => setAbono(e.target.value)}
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-bold shadow-sm text-emerald-600"
                             />
@@ -95,8 +104,8 @@ export default function ModalPagos(): React.ReactElement | null {
 
                     <div className="p-3 bg-white rounded-lg border border-slate-200 flex justify-between items-center shadow-sm">
                         <span className="text-xs font-medium text-slate-600">Saldo Pendiente Estimado:</span>
-                        <span className={`text-sm font-bold font-mono ${modalName <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            ${modalName.toFixed(2)}
+                        <span className={`text-sm font-bold font-mono ${saldoPendiente <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            ${saldoPendiente.toFixed(2)}
                         </span>
                     </div>
 

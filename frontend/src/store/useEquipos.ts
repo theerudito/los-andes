@@ -1,7 +1,6 @@
 import { create } from "zustand";
-import type {ReqCliente} from "../modelos/clientes.ts";
 import {toast} from "sonner";
-import type {Equipo, EquipoDTO} from "../modelos/equipos.ts";
+import type {Equipo, EquipoDTO, RPT_Equipos} from "../modelos/equipos.ts";
 import {equipoService} from "../servicios/equipoServicio.ts";
 
 const initialEquipo = (): Equipo => ({
@@ -32,7 +31,8 @@ type Data = {
     ObtenerEquipo: (id?: number) => Promise<void>;
     EnviarEquipo: () => Promise<void>;
     EliminarEquipo: (id: number) => Promise<void>;
-    DescargarPdf: (req: ReqCliente) => Promise<void>;
+    DescargarPdf: (req: RPT_Equipos) => Promise<void>;
+    DescargarOrdenPdf: (id:Number) => Promise<void>;
     reset: () => void;
 };
 
@@ -126,9 +126,17 @@ export const useEquipos = create<Data>((set, get) => ({
         }
     },
 
-    DescargarPdf: async (req: ReqCliente) => {
+    DescargarPdf: async (req: RPT_Equipos) => {
         try {
             await equipoService.descargarReporteEquiposPdf(req);
+        } catch (error) {
+            console.error("Error al descargar reporte en PDF:", error);
+        }
+    },
+
+    DescargarOrdenPdf: async (id: Number) => {
+        try {
+            await equipoService.descargarOrdenIngresoPdf(id);
         } catch (error) {
             console.error("Error al descargar reporte en PDF:", error);
         }

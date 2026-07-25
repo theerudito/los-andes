@@ -27,7 +27,7 @@ export default function ModalHistorial(): React.ReactElement | null {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[60] p-4 transition-all duration-300">
             <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
 
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-4 flex justify-between items-center shrink-0 shadow-sm">
+                <div className="bg-gradient-to-r from-yellow-600 to-yellow-600 text-white px-5 py-4 flex justify-between items-center shrink-0 shadow-sm">
                     <div className="flex items-center gap-2">
                         <History size={18} />
                         <h2 className="font-semibold tracking-wide text-sm md:text-base">
@@ -101,7 +101,7 @@ export default function ModalHistorial(): React.ReactElement | null {
 
                         <button
                             type="submit"
-                            className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all active:scale-95"
+                            className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-yellow-600 to-yellow-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >
                             <Save size={15} />
                             <span>Guardar Historial</span>

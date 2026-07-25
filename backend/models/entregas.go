@@ -4,6 +4,7 @@ import "database/sql"
 
 type EntregaDTO struct {
 	EntregaId          int    `json:"entrega_id"`
+	EquipoId           int    `json:"equipo_id"`
 	FechaEntrega       string `json:"fecha_entrega"`
 	TrabajosRealizados string `json:"trabajos_realizados"`
 	EstadoFinalEquipo  string `json:"estado_final_equipo"`

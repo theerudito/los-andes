@@ -30,9 +30,6 @@ export const useMarcas = create<Data>((set, get) => ({
 
     ObtenerMarcas: async () => {
 
-        const token = localStorage.getItem("token");
-        if (!token) return;
-
         set({ isLoading: true });
         try {
             const data = await marcaService.getMarcas();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useEffect} from 'react';
 import {
     X,
     Save,
@@ -15,10 +15,54 @@ import {
 } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
-
+import {useEquipos} from "../store/useEquipos.ts";
+import {useMarcas} from "../store/useMarcas.ts";
 
 export default function ModalEquipos(): React.ReactElement | null {
     const { modalName, CloseModal, OpenModal } = useModal((state) => state);
+    const { form_equipo, EnviarEquipo } = useEquipos((state) => state);
+    const { ObtenerMarcas, listar_marca } = useMarcas((state) => state);
+
+    useEffect(() => {
+        ObtenerMarcas();
+    }, []);
+
+    const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const {name} = e.target;
+
+        const value = e.target.value;
+
+        useEquipos.setState((state) => {
+            return {
+                form_equipo: {
+                    ...state.form_equipo,
+                    [name]: value
+                },
+            };
+        });
+    };
+
+    const handleChangeTextArea = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => {
+        const { name, value } = e.target;
+        useEquipos.setState((state) => ({
+            form_equipo: {
+                ...state.form_equipo,
+                [name]: value,
+            },
+        }));
+    };
+
+    const handleChangeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        useEquipos.setState((state) => ({
+            form_equipo: {
+                ...state.form_equipo,
+                [name]: Number(value)
+            },
+        }));
+    };
 
     if (modalName !== ModalLista.modal_equipo) return null;
 
@@ -69,7 +113,7 @@ export default function ModalEquipos(): React.ReactElement | null {
 
                                 <button
                                     type="button"
-                                    className="cursor-pointer bg-orange-50 text-orange-600 hover:bg-orange-100 px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0"
+                                    className="cursor-pointer bg-orange-600 text-white hover:orange-700 px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0"
                                     title="Limpiar"
                                 >
                                     <EraserIcon size={15} />
@@ -98,16 +142,25 @@ export default function ModalEquipos(): React.ReactElement | null {
                             </label>
                             <div className="flex items-stretch shadow-sm rounded-lg overflow-hidden border border-slate-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all bg-white h-10 divide-x divide-slate-200">
                                 <select
+                                    onChange={handleChangeSelect}
                                     name="marca_id"
+                                    value={form_equipo.marca_id}
                                     required
                                     className="flex-1 min-w-0 px-3 text-xs text-slate-800 outline-none font-semibold uppercase bg-white cursor-pointer h-full"
                                 >
-                                        <option>
-                                           TEST
-                                        </option>
+                                    <option disabled>SELECIONE UNA MARCA</option>
+                                    {
+                                        listar_marca.map((item) => (
+                                            <option value={item.marca_id} key={item.marca_id}>
+                                                {item.nombre}
+                                            </option>
+                                        ))
+                                    }
+
                                 </select>
 
                                 <button
+                                    onClick={() => OpenModal(ModalLista.modal_marca)}
                                     type="button"
                                     className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0"
                                     title="Agregar Nueva Marca"
@@ -122,6 +175,8 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <Laptop size={14} className="text-blue-600" /> Tipo Equipo
                             </label>
                             <input
+                                value={form_equipo.tipo_equipo}
+                                onChange={handleChangeInput}
                                 type="text"
                                 name="tipo_equipo"
                                 placeholder="Ej: LAPTOP, PC, IMPRESORA"
@@ -137,6 +192,8 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <Package size={14} className="text-blue-600" /> Modelo
                             </label>
                             <input
+                                value={form_equipo.modelo}
+                                onChange={handleChangeInput}
                                 type="text"
                                 name="modelo"
                                 placeholder="Ej: MPS, THINKPAD E14"
@@ -150,6 +207,8 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <FileText size={14} className="text-blue-600" /> Número de Serie
                             </label>
                             <input
+                                value={form_equipo.numero_serie}
+                                onChange={handleChangeInput}
                                 type="text"
                                 name="numero_serie"
                                 placeholder="Ej: 123456A"
@@ -164,6 +223,8 @@ export default function ModalEquipos(): React.ReactElement | null {
                             <Package size={14} className="text-blue-600" /> Accesorios Dejados
                         </label>
                         <input
+                            value={form_equipo.accesorios}
+                            onChange={handleChangeInput}
                             type="text"
                             name="accesorios"
                             placeholder="Ej: CARGADOR, MOUSE, MOCHILA"
@@ -177,6 +238,8 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <Wrench size={14} className="text-blue-600" /> Descripción del Problema
                             </label>
                             <textarea
+                                value={form_equipo.descripcion_problema}
+                                onChange={handleChangeTextArea}
                                 name="descripcion_problema"
                                 rows={2}
                                 placeholder="Ej: FORMATEO, NO ENCIENDE"
@@ -190,6 +253,8 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <FileText size={14} className="text-blue-600" /> Observaciones Adicionales
                             </label>
                             <textarea
+                                value={form_equipo.observacion}
+                                onChange={handleChangeTextArea}
                                 name="observacion"
                                 rows={2}
                                 placeholder="Ej: RAYONES EN LA TAPA"
@@ -204,7 +269,9 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <Calendar size={14} className="text-blue-600" /> Fecha Recepción
                             </label>
                             <input
-                                type="datetime-local"
+                                value={form_equipo.fecha_recepcion}
+                                onChange={handleChangeInput}
+                                type="datetime"
                                 name="fecha_recepcion"
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium shadow-sm"
@@ -216,7 +283,9 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <Calendar size={14} className="text-blue-600" /> Fecha Estimada Entrega
                             </label>
                             <input
-                                type="datetime-local"
+                                value={form_equipo.fecha_estimada_entrega}
+                                onChange={handleChangeInput}
+                                type="datetime"
                                 name="fecha_estimada_entrega"
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium shadow-sm"
@@ -224,7 +293,6 @@ export default function ModalEquipos(): React.ReactElement | null {
                         </div>
                     </div>
 
-                    {/* Footer */}
                     <div className="pt-3 border-t border-slate-200/80 flex items-center justify-end gap-2 shrink-0">
                         <button
                             type="button"
@@ -235,6 +303,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                         </button>
 
                         <button
+                            onClick={EnviarEquipo}
                             type="submit"
                             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >

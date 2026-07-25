@@ -1,30 +1,32 @@
 import api from "../helpers/fetching/axios.ts";
-
-export interface RegistrarEntregaRequest {
-    equipo_id: number;
-    trabajos_realizados: string;
-    estado_final_equipo: string;
-    conformidad_cliente: number;
-    observaciones: string;
-}
+import type {Entrega} from "../modelos/entregas.ts";
 
 export const entregaService = {
-    consultarEntregaPorEquipo: async (equipoId: number) => {
-        const { data } = await api.get(`/entrega/${equipoId}`);
+
+    consultarEntrega: async (equipoId: number) => {
+        const { data } = await api.get(`/entrega/equipo/${equipoId}`);
         return data;
     },
-    registrarEntrega: async (payload: RegistrarEntregaRequest) => {
+
+    crearEntrega: async (payload: Entrega) => {
         const { data } = await api.post('/entrega/', payload);
         return data;
     },
-    descargarOrdenEntregaPdf: async (entregaId: number) => {
-        const response = await api.get(`/entrega/orden-entrega/${entregaId}`, { responseType: 'blob' });
+
+    modificarEntrega: async (payload: Entrega) => {
+        const { data } = await api.put('/entrega/', payload);
+        return data;
+    },
+
+    descargarOrdenEntregaPdf: async (id: number) => {
+        const response = await api.get(`/entrega/orden-pdf/${id}`, { responseType: 'blob' });
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `orden_entrega_${entregaId}.pdf`);
+        link.setAttribute('download', `orden_entrega.pdf`);
         document.body.appendChild(link);
         link.click();
         link.remove();
     },
+
 };

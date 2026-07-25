@@ -39,7 +39,7 @@ export default function ModalMarcas() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[60] p-4 transition-all duration-300">
             <div className="w-full max-w-xl bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
 
-                <div className="bg-blue-600 text-white px-5 py-4 flex justify-between items-center shrink-0 shadow-sm">
+                <div className="bg-purple-600 text-white px-5 py-4 flex justify-between items-center shrink-0 shadow-sm">
                     <div className="flex items-center gap-2">
                         <Tag size={18} />
                         <h2 className="font-semibold tracking-wide text-sm md:text-base">Gestión de Marcas</h2>
@@ -67,7 +67,7 @@ export default function ModalMarcas() {
                         <div className="flex shrink-0 border-l border-slate-200">
                             <button
                                 type="button"
-                                className="cursor-pointer bg-orange-50 text-orange-600 hover:bg-orange-100 px-3.5 flex items-center justify-center transition-all border-r border-orange-200/60 active:scale-95"
+                                className="cursor-pointer bg-orange-600 text-white hover:orange-700 px-3.5 flex items-center justify-center transition-all border-r border-orange-200/60 active:scale-95"
                                 title="Limpiar"
                             >
                                 <EraserIcon size={16} />
@@ -76,7 +76,7 @@ export default function ModalMarcas() {
                             <button
                                 onClick={EnviarMarca}
                                 type="button"
-                                className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 flex items-center justify-center transition-all gap-1 text-xs font-semibold active:scale-95"
+                                className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 flex items-center justify-center transition-all gap-1 text-xs font-semibold active:scale-95"
                                 title="Guardar"
                             >
                                 <Save size={15} />

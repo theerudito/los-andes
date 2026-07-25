@@ -38,3 +38,8 @@ export interface EquipoDTO {
     nombres: string;
     apellidos: string;
 }
+
+export interface RPT_Equipos {
+    fecha_desde: string;
+    fecha_hasta: string;
+}
