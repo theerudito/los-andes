@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
     X,
     Save,
@@ -9,17 +8,44 @@ import {
 } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
+import {useHistorial} from "../store/useHistorial.ts";
+import React from "react";
 
 const estadosOpciones = [
-    { estado_id: 1, nombre: "EN REVISIÓN" },
-    { estado_id: 2, nombre: "DIAGNÓSTICO" },
-    { estado_id: 3, nombre: "EN PROCESO" },
-    { estado_id: 4, nombre: "REPARADO" },
-    { estado_id: 5, nombre: "COMPLETADO" },
+    { estado_id: 1, nombre: "Recibido" },
+    { estado_id: 2, nombre: "En diagnóstico" },
+    { estado_id: 3, nombre: "Esperando repuestos" },
+    { estado_id: 4, nombre: "En reparación" },
+    { estado_id: 5, nombre: "Listo para entrega" },
+    { estado_id: 6, nombre: "Entregado" },
+    { estado_id: 7, nombre: "Cancelado" }
 ];
 
 export default function ModalHistorial(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
+    const { form_historial, EnviarHistorial, equipo_id } = useHistorial((state) => state);
+
+    const handleChangeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        useHistorial.setState((state) => ({
+            form_historial: {
+                ...state.form_historial,
+                [name]: Number(value)
+            },
+        }));
+    };
+
+    const handleChangeTextArea = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => {
+        const { name, value } = e.target;
+        useHistorial.setState((state) => ({
+            form_historial: {
+                ...state.form_historial,
+                [name]: value,
+            },
+        }));
+    };
 
     if (modalName !== ModalLista.modal_historial) return null;
 
@@ -43,7 +69,6 @@ export default function ModalHistorial(): React.ReactElement | null {
                     </button>
                 </div>
 
-
                 <div className="p-5 bg-slate-50/50 flex flex-col gap-4">
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -52,9 +77,11 @@ export default function ModalHistorial(): React.ReactElement | null {
                                 <Laptop size={14} className="text-blue-600" /> ID Equipo
                             </label>
                             <input
+                                value={equipo_id}
                                 type="number"
                                 name="equipo_id"
                                 required
+                                disabled
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono font-bold shadow-sm"
                             />
                         </div>
@@ -64,14 +91,14 @@ export default function ModalHistorial(): React.ReactElement | null {
                                 <Tag size={14} className="text-blue-600" /> Estado del Equipo
                             </label>
                             <select
+                                value={form_historial.estado_id}
+                                onChange={handleChangeSelect}
                                 name="estado_id"
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-semibold uppercase cursor-pointer shadow-sm"
                             >
                                 {estadosOpciones.map((e) => (
-                                    <option key={e.estado_id} value={e.estado_id}>
-                                        {e.nombre}
-                                    </option>
+                                    <option key={e.estado_id} value={e.estado_id}>{e.nombre}</option>
                                 ))}
                             </select>
                         </div>
@@ -82,6 +109,8 @@ export default function ModalHistorial(): React.ReactElement | null {
                             <FileText size={14} className="text-blue-600" /> Observaciones Técnicas
                         </label>
                         <textarea
+                            value={form_historial.observaciones_tecnicas}
+                            onChange={handleChangeTextArea}
                             name="observaciones_tecnicas"
                             rows={3}
                             placeholder="Ej: completado todo ok"
@@ -100,6 +129,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                         </button>
 
                         <button
+                            onClick={EnviarHistorial}
                             type="submit"
                             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-yellow-600 to-yellow-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >

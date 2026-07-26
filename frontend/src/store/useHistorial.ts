@@ -1,17 +1,18 @@
 import { create } from "zustand";
 import {toast} from "sonner";
-import type {HistorialReparacion, HistorialReparacionDTO} from "../modelos/historial.ts";
+import type {Historial, HistorialDTO} from "../modelos/historial.ts";
 import {historialService} from "../servicios/historialServicio.ts";
 
-const initialHistorial = (): HistorialReparacion => ({
+const initialHistorial = (): Historial => ({
     equipo_id: 0,
     estado_id: 0,
     observaciones_tecnicas: "",
+    historial_id: 0
 });
 
 type Data = {
-    form_historial: HistorialReparacion;
-    listar_historial: HistorialReparacionDTO[];
+    form_historial: Historial;
+    listar_historial: HistorialDTO[];
     equipo_id: number,
     isEditing: boolean;
     isLoading: boolean;
@@ -66,7 +67,8 @@ export const useHistorial = create<Data>((set, get) => ({
         const { form_historial, isEditing, ObtenerHistoriales, reset } = get();
         set({ isLoading: true });
         try {
-            const payload: HistorialReparacion = {
+            const payload: Historial = {
+                historial_id: form_historial.historial_id,
                 equipo_id: form_historial.equipo_id,
                 estado_id: form_historial.estado_id,
                 observaciones_tecnicas: form_historial.observaciones_tecnicas

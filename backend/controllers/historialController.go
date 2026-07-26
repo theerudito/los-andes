@@ -21,8 +21,8 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 		rows        *sql.Rows
 		err         error
 		exist       int
-		historiales []models.HistorialReparacionesDTO
-		historial   models.HistorialReparacionesDTO
+		historiales []models.HistorialDTO
+		historial   models.HistorialDTO
 	)
 
 	id, err := strconv.Atoi(c.Params("id"))
@@ -62,7 +62,7 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 			INNER JOIN estados_reparacion r ON h.estado_id = r.estado_id
 			INNER JOIN usuarios u ON h.usuario_id = u.usuario_id
 		WHERE e.equipo_id = ?
-		ORDER BY h.fecha DESC`, id)
+		ORDER BY h.historial_id DESC`, id)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "historial", "error al obtener el historial "+err.Error())
@@ -105,6 +105,67 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 	return c.Status(200).JSON(historiales)
 }
 
+func ConsultarHistorial(c *fiber.Ctx) error {
+	var (
+		conn      = database.GetDB()
+		rows      *sql.Rows
+		err       error
+		exist     int = 0
+		historial models.Historial
+	)
+
+	id, err := strconv.Atoi(c.Params("id"))
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID del historial inválido"})
+	}
+
+	err = conn.QueryRow(`SELECT COUNT(*) FROM historial_reparaciones WHERE historial_id = ?`, id).Scan(&exist)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "error verificando equipo "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error ejecutando la consulta"})
+	}
+
+	rows, err = conn.Query(`
+		SELECT
+			h.historial_id,
+			h.observaciones_tecnicas,
+			e.equipo_id,
+			r.estado_id
+		FROM historial_reparaciones h
+			INNER JOIN equipos e ON h.equipo_id = e.equipo_id
+			INNER JOIN clientes c ON e.cliente_id = c.cliente_id
+			INNER JOIN estados_reparacion r ON h.estado_id = r.estado_id
+		WHERE h.historial_id = ?`, id)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "error al obtener el historial "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error al obtener el historial"})
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&historial.HistorialId,
+			&historial.ObservacionesTecnicas,
+			&historial.EquipoId,
+			&historial.EstadoId)
+
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "clientes", "Error al leer los registros")
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
+		}
+
+	}
+
+	if exist <= 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
+	}
+
+	return c.JSON(historial)
+}
+
 func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	var (
 		conn      = database.GetDB()
@@ -113,7 +174,7 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 		claims    *models.CustomClaims
 		saldo     float64
 		tx        *sql.Tx
-		historial models.HistorialReparaciones
+		historial models.Historial
 	)
 
 	if err := c.BodyParser(&historial); err != nil {
@@ -242,19 +303,15 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 
 func ReporteHistorial(c *fiber.Ctx) error {
 	var (
-		req          models.ReqReportesHistorial
-		conn         = database.GetDB()
-		historiales  []models.HistorialReparacionesDTO
-		args         []any
-		whereClauses []string
+		conn        = database.GetDB()
+		historiales []models.HistorialDTO
+		rows        *sql.Rows
+		err         error
 	)
 
-	if err := c.BodyParser(&req); err != nil {
-		_ = helpers.InsertLogsError(conn, "historial", "El contenido del json es incorrecto: "+err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
-	}
+	id, err := strconv.Atoi(c.Params("id"))
 
-	queryBase := `
+	rows, err = conn.Query(`
 		SELECT
 			h.historial_id,
 			COALESCE(h.observaciones_tecnicas, '') AS observaciones_tecnicas,
@@ -274,43 +331,18 @@ func ReporteHistorial(c *fiber.Ctx) error {
 			INNER JOIN equipos e ON h.equipo_id = e.equipo_id
 			INNER JOIN clientes c ON e.cliente_id = c.cliente_id
 			INNER JOIN estados_reparacion r ON h.estado_id = r.estado_id
-			LEFT JOIN usuarios u ON h.usuario_id = u.usuario_id`
+			LEFT JOIN usuarios u ON h.usuario_id = u.usuario_id
+		WHERE e.equipo_id = ?`, id)
 
-	if req.ClienteId > 0 {
-		whereClauses = append(whereClauses, "c.cliente_id = ?")
-		args = append(args, req.ClienteId)
-	}
-
-	if req.EquipoID > 0 {
-		whereClauses = append(whereClauses, "e.equipo_id = ?")
-		args = append(args, req.EquipoID)
-	}
-
-	if req.EstadoID >= 1 && req.EstadoID <= 6 {
-		whereClauses = append(whereClauses, "h.estado_id = ?")
-		args = append(args, req.EstadoID)
-	}
-
-	if req.Fecha_Desde != "" && req.Fecha_Hasta != "" {
-		whereClauses = append(whereClauses, "DATE(h.fecha) BETWEEN ? AND ?")
-		args = append(args, req.Fecha_Desde, req.Fecha_Hasta)
-	}
-
-	if len(whereClauses) > 0 {
-		queryBase += " WHERE " + strings.Join(whereClauses, " AND ")
-	}
-
-	queryBase += " ORDER BY h.fecha DESC"
-
-	rows, err := conn.Query(queryBase, args...)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "historial", "Error al ejecutar la consulta: "+err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
+		_ = helpers.InsertLogsError(conn, "historial", "error al obtener el historial "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error al obtener el historial"})
 	}
+
 	defer rows.Close()
 
 	for rows.Next() {
-		var h models.HistorialReparacionesDTO
+		var h models.HistorialDTO
 		err = rows.Scan(
 			&h.HistorialId,
 			&h.ObservacionesTecnicas,

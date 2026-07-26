@@ -7,9 +7,11 @@ import {logsService} from "../../servicios/logServicio.ts";
 export default function PaginaAuditoriaOk(): React.ReactElement {
     const [logs, setLogs] = useState<LogOk[]>([]);
 
+    /*
     const obtenerFechaHoy = (): string => {
         return new Date().toISOString().split('T')[0];
     };
+     */
 
     const [fechaDesde, setFechaDesde] = useState<string>("2026-07-01");
     const [fechaHasta, setFechaHasta] = useState<string>("2026-07-31");

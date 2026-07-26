@@ -3,8 +3,13 @@ import type {Entrega} from "../modelos/entregas.ts";
 
 export const entregaService = {
 
-    consultarEntrega: async (equipoId: number) => {
+    consultarEntregas: async (equipoId: number) => {
         const { data } = await api.get(`/entrega/equipo/${equipoId}`);
+        return data;
+    },
+
+    consultarEntrega: async (id: number) => {
+        const { data } = await api.get(`/entrega/${id}`);
         return data;
     },
 
@@ -19,7 +24,7 @@ export const entregaService = {
     },
 
     descargarOrdenEntregaPdf: async (id: number) => {
-        const response = await api.get(`/entrega/orden-pdf/${id}`, { responseType: 'blob' });
+        const response = await api.get(`/entrega/pdf/${id}`, { responseType: 'blob' });
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;

@@ -76,7 +76,7 @@ func SetupRoutes(app *fiber.App) {
 
 	// historial
 	protectedHistorial := v1.Group("/historial", helpers.JWTMiddleware())
-	protectedHistorial.Get("/:id", controllers.ConsultarHistorialEquipo)
+	protectedHistorial.Get("/:id", controllers.ConsultarHistorial)
 	protectedHistorial.Get("/equipo/:id", controllers.ConsultarHistorialEquipo)
 	protectedHistorial.Post("/", controllers.ActualizarEstadoEquipo)
 	protectedHistorial.Put("/", controllers.ActualizarEstadoEquipo)
@@ -84,17 +84,17 @@ func SetupRoutes(app *fiber.App) {
 
 	// pagos
 	protectedPagos := v1.Group("/pago", helpers.JWTMiddleware())
-	protectedPagos.Get("/:id", controllers.ConsultarCuentaEquipo)
+	protectedPagos.Get("/:id", controllers.ConsultarCuenta)
 	protectedPagos.Get("/equipo/:id", controllers.ConsultarCuentaEquipo)
 	protectedPagos.Post("/", controllers.ActualizarCuentaEquipo)
 	protectedPagos.Put("/", controllers.ActualizarCuentaEquipo)
-	protectedPagos.Get("/pdf/:id", controllers.ProcesarEntregaEquipo)
+	protectedPagos.Get("/pdf/:id", controllers.ComprobantePago)
 
 	// entregas
 	protectedEntregas := v1.Group("/entrega", helpers.JWTMiddleware())
-	protectedEntregas.Get("/:id", controllers.ConsultarEntregaPorEquipo)
+	protectedEntregas.Get("/:id", controllers.ConsultarEntrega)
 	protectedEntregas.Get("/equipo/:id", controllers.ConsultarEntregaPorEquipo)
-	protectedEntregas.Get("/orden-entrega/:id", controllers.OrdenEntrega)
+	protectedEntregas.Get("/pdf/:id", controllers.OrdenEntrega)
 	protectedEntregas.Post("/", controllers.RegistrarEntrega)
 	protectedEntregas.Put("/", controllers.RegistrarEntrega)
 	protectedEntregas.Post("/procesar", controllers.ProcesarEntregaEquipo)

@@ -5,7 +5,6 @@ import App from './App.tsx'
 import {ToasUI} from "./componentes/ToasUI.tsx";
 import ModalCliente from "./modales/ModalClientes.tsx";
 import ModalEquipos from "./modales/ModalEquipos.tsx";
-import ModalMarcas from "./modales/ModalMarcas.tsx";
 import ModalUsuario from "./modales/ModalUsuario.tsx";
 import ModalEntregas from "./modales/ModalEntregas.tsx";
 import ModalPagos from "./modales/ModalPagos.tsx";

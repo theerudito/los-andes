@@ -18,7 +18,7 @@ import {useEntregas} from "../../store/useEntregas.ts";
 
 export default function PaginaEntregas(): React.ReactElement {
     const { OpenModal } = useModal((state) => state);
-    const { ObtenerEntrega, listar_entrega, setEquipoId  } = useEntregas((state) => state);
+    const { ObtenerEntregas, ObtenerEntrega, listar_entrega, setEquipoId, DescargarPdf } = useEntregas((state) => state);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
@@ -28,7 +28,7 @@ export default function PaginaEntregas(): React.ReactElement {
         if (equipo_id) {
             setEquipoId(Number(equipo_id));
         }
-        ObtenerEntrega();
+        ObtenerEntregas();
     }, [equipo_id]);
 
     const [busqueda, setBusqueda] = useState<string>('');
@@ -40,6 +40,11 @@ export default function PaginaEntregas(): React.ReactElement {
     const handleRegresar = () => {
         navigate(-1);
     };
+
+    async function VerEntrega(entregaId: number){
+        await ObtenerEntrega(entregaId)
+        OpenModal(ModalLista.modal_entrega)
+    }
 
     return (
         <div className="space-y-6 w-full">
@@ -127,31 +132,31 @@ export default function PaginaEntregas(): React.ReactElement {
 
                         <tbody className="divide-y divide-gray-100">
                         {entregasFiltradas.length > 0 ? (
-                            entregasFiltradas.map((entrega) => (
-                                <tr key={entrega.entrega_id} className="hover:bg-gray-50/80 transition-colors text-xs">
+                            entregasFiltradas.map((item) => (
+                                <tr key={item.entrega_id} className="hover:bg-gray-50/80 transition-colors text-xs">
 
                                     <td className="px-4 py-3.5 font-bold text-gray-900">
-                                        #{entrega.entrega_id}
+                                        #{item.entrega_id}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-mono font-bold text-amber-700 whitespace-nowrap">
-                                        N° {entrega.comprobante_nro}
+                                        N° {item.comprobante_nro}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
-                                        {entrega.equipo_codigo}
+                                        {item.equipo_codigo}
                                     </td>
 
-                                    <td className="px-4 py-3.5 max-w-xs truncate" title={entrega.trabajos_realizados}>
-                                        <span className="font-medium text-gray-800">{entrega.trabajos_realizados || '-'}</span>
+                                    <td className="px-4 py-3.5 max-w-xs truncate" title={item.trabajos_realizados}>
+                                        <span className="font-medium text-gray-800">{item.trabajos_realizados || '-'}</span>
                                     </td>
 
-                                    <td className="px-4 py-3.5 max-w-xs truncate" title={entrega.estado_final_equipo}>
-                                        <span className="text-gray-700">{entrega.estado_final_equipo || '-'}</span>
+                                    <td className="px-4 py-3.5 max-w-xs truncate" title={item.estado_final_equipo}>
+                                        <span className="text-gray-700">{item.estado_final_equipo || '-'}</span>
                                     </td>
 
                                     <td className="px-4 py-3.5 whitespace-nowrap">
-                                        {entrega.conformidad_cliente === 1 ? (
+                                        {item.conformidad_cliente === 1 ? (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200 rounded-full">
                                           <CheckCircle2 className="w-3 h-3" />
                                           Conforme
@@ -167,18 +172,19 @@ export default function PaginaEntregas(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                         <div className="inline-flex items-center gap-1 text-gray-700 font-medium">
                                             <User className="w-3.5 h-3.5 text-gray-400" />
-                                            <span>{entrega.nombres}</span>
+                                            <span>{item.nombres}</span>
                                         </div>
                                     </td>
 
                                     <td className="px-4 py-3.5 whitespace-nowrap text-gray-500 font-medium">
-                                        {entrega.fecha_entrega}
+                                        {item.fecha_entrega}
                                     </td>
 
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
 
                                             <button
+                                                onClick={() => DescargarPdf(item.entrega_id)}
                                                 className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-100 cursor-pointer"
                                                 title="Imprimir Orden"
                                             >
@@ -186,7 +192,7 @@ export default function PaginaEntregas(): React.ReactElement {
                                             </button>
 
                                             <button
-                                                onClick={() => OpenModal(ModalLista.modal_entrega)}
+                                                onClick={() => VerEntrega(item.entrega_id)}
                                                 className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
                                                 title="Editar entrega"
                                             >

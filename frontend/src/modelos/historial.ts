@@ -1,10 +1,11 @@
-export interface HistorialReparacion {
+export interface Historial {
     equipo_id: number;
     estado_id: number;
     observaciones_tecnicas: string;
+    historial_id: number;
 }
 
-export interface HistorialReparacionDTO {
+export interface HistorialDTO {
     historial_id: number;
     observaciones_tecnicas: string;
     fecha: string;

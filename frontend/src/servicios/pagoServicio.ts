@@ -25,13 +25,15 @@ export const pagoService = {
 
     reporteCuentaPdf: async (id: number) => {
         const response = await api.get(`/pago/pdf/${id}`, { responseType: 'blob' });
-        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `reporte_pagos.pdf`);
+        link.setAttribute('download', `comprobante_pago_${id}.pdf`);
         document.body.appendChild(link);
         link.click();
         link.remove();
+        window.URL.revokeObjectURL(url);
     },
 
 };

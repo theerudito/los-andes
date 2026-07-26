@@ -19,7 +19,8 @@ type Data = {
     isEditing: boolean;
     isLoading: boolean;
     setEquipoId: (equipo_id: number) => void;
-    ObtenerEntrega: () => Promise<void>;
+    ObtenerEntregas: () => Promise<void>;
+    ObtenerEntrega: (id: number) => Promise<void>;
     EnviarEntrega: () => Promise<void>;
     DescargarPdf: (id: number) => Promise<void>;
     reset: () => void;
@@ -34,11 +35,11 @@ export const useEntregas = create<Data>((set, get) => ({
 
     setEquipoId: (equipo_id) => set({ equipo_id }),
 
-    ObtenerEntrega: async () => {
+    ObtenerEntregas: async () => {
 
         set({ isLoading: true });
         try {
-            const data = await entregaService.consultarEntrega(get().equipo_id);
+            const data = await entregaService.consultarEntregas(get().equipo_id);
             if (Array.isArray(data)) {
                 set({ listar_entrega: data, isLoading: false });
             } else {
@@ -47,6 +48,20 @@ export const useEntregas = create<Data>((set, get) => ({
         } catch (error: any) {
             console.error("Error al obtener lista de la entrega:", error.message);
             set({ listar_entrega: [], isLoading: false });
+        }
+    },
+
+    ObtenerEntrega: async (id?: number) => {
+        const entregaId = id || get().form_entrega.entrega_id;
+        if (!entregaId) return;
+
+        set({ isLoading: true });
+        try {
+            const data = await entregaService.consultarEntrega(entregaId);
+            set({ form_entrega: data, isEditing: true, isLoading: false });
+        } catch (error) {
+            console.error(`Error al consultar entrega ID ${entregaId}:`, error);
+            set({ isLoading: false });
         }
     },
 

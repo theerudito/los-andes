@@ -2,9 +2,9 @@ INSERT INTO
   estados_reparacion (nombre)
 VALUES
   ('Recibido'),
-  ('En diagnóstico'),
+  ('En diagnostico'),
   ('Esperando repuestos'),
-  ('En reparación'),
+  ('En reparacion'),
   ('Listo para entrega'),
   ('Entregado'),
   ('Cancelado');

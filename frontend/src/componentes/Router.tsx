@@ -1,4 +1,3 @@
-import React from "react";
 import { createBrowserRouter, type RouteObject } from "react-router-dom";
 import MainLayout from "./Layout.tsx";
 import { navItems } from "./Sidebar.tsx";

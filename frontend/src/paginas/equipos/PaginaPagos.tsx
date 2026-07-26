@@ -4,7 +4,6 @@ import {
     Pencil,
     Search,
     RotateCcw,
-    FileText,
     ArrowLeft,
     CreditCard,
     CheckCircle2,
@@ -42,6 +41,11 @@ export default function PaginaPagos(): React.ReactElement {
     const handleRegresar = () => {
         navigate(-1);
     };
+
+    async function VerPago(pagoId: number){
+        await ObtenerPago(pagoId)
+        OpenModal(ModalLista.modal_pago)
+    }
 
     return (
         <div className="space-y-6 w-full">
@@ -129,31 +133,31 @@ export default function PaginaPagos(): React.ReactElement {
 
                         <tbody className="divide-y divide-gray-100">
                         {cuentasFiltradas.length > 0 ? (
-                            cuentasFiltradas.map((cuenta) => (
-                                <tr key={cuenta.cuenta_id} className="hover:bg-gray-50/80 transition-colors text-xs">
+                            cuentasFiltradas.map((item) => (
+                                <tr key={item.cuenta_id} className="hover:bg-gray-50/80 transition-colors text-xs">
 
                                     <td className="px-4 py-3.5 font-bold text-gray-900">
-                                        #{cuenta.cuenta_id}
+                                        #{item.cuenta_id}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
-                                        {cuenta.equipo_codigo}
+                                        {item.equipo_codigo}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 text-right whitespace-nowrap">
-                                        ${cuenta.costo_total.toFixed(2)}
+                                        ${item.costo_total.toFixed(2)}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-bold text-emerald-600 text-right whitespace-nowrap">
-                                        ${cuenta.abono.toFixed(2)}
+                                        ${item.abono.toFixed(2)}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-bold text-red-600 text-right whitespace-nowrap">
-                                        ${cuenta.saldo.toFixed(2)}
+                                        ${item.saldo.toFixed(2)}
                                     </td>
 
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
-                                        {cuenta.saldo === 0 ? (
+                                        {item.saldo === 0 ? (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
                                           <CheckCircle2 className="w-3 h-3" />
                                           Pagado
@@ -171,7 +175,7 @@ export default function PaginaPagos(): React.ReactElement {
                                         <div className="flex items-center justify-center gap-1.5">
 
                                             <button
-
+                                                onClick={() => DescargarPdf(item.cuenta_id)}
                                                 className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 cursor-pointer"
                                                 title="Descargar Comprobante / Recibo PDF"
                                             >
@@ -179,7 +183,7 @@ export default function PaginaPagos(): React.ReactElement {
                                             </button>
 
                                             <button
-                                                onClick={() => OpenModal(ModalLista.modal_pago)}
+                                                onClick={() => VerPago(item.cuenta_id)}
                                                 className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
                                                 title="Gestionar Abono / Editar Cuenta"
                                             >

@@ -17,7 +17,6 @@ import {
 import {useModal} from "../../store/useModal.ts";
 import {ModalLista} from "../../helpers/ModalLista.ts";
 import {useEquipos} from "../../store/useEquipos.ts";
-import type {RPT_Clientes} from "../../modelos/clientes.ts";
 import type {RPT_Equipos} from "../../modelos/equipos.ts";
 import ModalMarcas from "../../modales/ModalMarcas.tsx";
 

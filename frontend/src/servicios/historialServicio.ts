@@ -1,4 +1,4 @@
-import type {HistorialReparacion} from "../modelos/historial.ts";
+import type {Historial} from "../modelos/historial.ts";
 import api from "../helpers/fetching/axios.ts";
 
 export const historialService = {
@@ -13,12 +13,12 @@ export const historialService = {
         return data;
     },
 
-    crearHistorial: async (payload: HistorialReparacion) => {
+    crearHistorial: async (payload: Historial) => {
         const { data } = await api.post('/historial/', payload);
         return data;
     },
 
-    actualizarHistorial: async (payload: HistorialReparacion) => {
+    actualizarHistorial: async (payload: Historial) => {
         const { data } = await api.put('/historial/', payload);
         return data;
     },

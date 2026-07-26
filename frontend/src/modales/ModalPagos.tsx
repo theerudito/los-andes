@@ -1,22 +1,34 @@
-import React, { useState } from 'react';
 import {
     X,
     Save,
     CreditCard,
     DollarSign,
-    User,
     Laptop
 } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
+import {usePagos} from "../store/usePagos.ts";
 
 export default function ModalPagos(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
+    const { form_pagos, EnviarPago, equipo_id } = usePagos((state) => state);
 
-    const [costoTotal, setCostoTotal] = useState<string>('0');
-    const [abono, setAbono] = useState<string>('0');
+    const saldoPendiente = Math.max(0, Number(form_pagos.costo_total || 0) - Number(form_pagos.abono || 0));
 
-    const saldoPendiente = Math.max(0, Number(costoTotal || 0) - Number(abono || 0));
+    const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const {name} = e.target;
+
+        const value = e.target.value;
+
+        usePagos.setState((state) => {
+            return {
+                form_pagos: {
+                    ...state.form_pagos,
+                    [name]: value
+                },
+            };
+        });
+    };
 
     if (modalName !== ModalLista.modal_pago) return null;
 
@@ -28,7 +40,7 @@ export default function ModalPagos(): React.ReactElement | null {
                     <div className="flex items-center gap-2">
                         <CreditCard size={18} />
                         <h2 className="font-semibold tracking-wide text-sm md:text-base">
-                            Registrar / Actualizar Pago
+                            Registrar Pago
                         </h2>
                     </div>
                     <button
@@ -48,24 +60,15 @@ export default function ModalPagos(): React.ReactElement | null {
                                 <Laptop size={14} className="text-emerald-600" /> ID Equipo
                             </label>
                             <input
+                                value={equipo_id}
                                 type="number"
                                 name="equipo_id"
                                 required
+                                disabled
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono font-bold shadow-sm"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                                <User size={14} className="text-emerald-600" /> ID Usuario (Cobrador)
-                            </label>
-                            <input
-                                type="number"
-                                name="usuario_id"
-                                required
-                                className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono font-bold shadow-sm"
-                            />
-                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -78,8 +81,8 @@ export default function ModalPagos(): React.ReactElement | null {
                                 step="0.01"
                                 min="0"
                                 name="costo_total"
-                                value={costoTotal}
-                                onChange={(e) => setCostoTotal(e.target.value)}
+                                value={form_pagos.costo_total}
+                                onChange={handleChangeInput}
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-bold shadow-sm"
                             />
@@ -94,8 +97,8 @@ export default function ModalPagos(): React.ReactElement | null {
                                 step="0.01"
                                 min="0"
                                 name="abono"
-                                value={abono}
-                                onChange={(e) => setAbono(e.target.value)}
+                                value={form_pagos.abono}
+                                onChange={handleChangeInput}
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-bold shadow-sm text-emerald-600"
                             />
@@ -119,6 +122,7 @@ export default function ModalPagos(): React.ReactElement | null {
                         </button>
 
                         <button
+                            onClick={EnviarPago}
                             type="submit"
                             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >

@@ -1,12 +1,13 @@
 package models
 
-type HistorialReparaciones struct {
+type Historial struct {
 	EquipoId              int    `json:"equipo_id"`
 	EstadoId              int    `json:"estado_id"`
+	HistorialId           int    `json:"historial_id"`
 	ObservacionesTecnicas string `json:"observaciones_tecnicas"`
 }
 
-type HistorialReparacionesDTO struct {
+type HistorialDTO struct {
 	HistorialId           int    `json:"historial_id"`
 	ObservacionesTecnicas string `json:"observaciones_tecnicas"`
 	Fecha                 string `json:"fecha"`

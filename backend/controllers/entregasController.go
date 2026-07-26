@@ -48,7 +48,7 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 		WHERE en.equipo_id = ?`, id)
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "usuarios", "Error al ejecutar la consulta "+err.Error())
+		_ = helpers.InsertLogsError(conn, "entregas", "Error al ejecutar la consulta "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
 
@@ -68,7 +68,7 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 			&entrega.Usuario)
 
 		if err != nil {
-			_ = helpers.InsertLogsError(conn, "usuarios", "Error al leer los registros "+err.Error())
+			_ = helpers.InsertLogsError(conn, "entregas", "Error al leer los registros "+err.Error())
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
@@ -81,6 +81,68 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(entregas)
+
+}
+
+func ConsultarEntrega(c *fiber.Ctx) error {
+
+	var (
+		conn    = database.GetDB()
+		rows    *sql.Rows
+		err     error
+		entrega models.EntregaDTO
+		id      int
+	)
+
+	id, err = strconv.Atoi(c.Params("id"))
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID de equipo inválido"})
+	}
+
+	rows, err = conn.Query(`
+		SELECT 
+		  en.entrega_id,
+		  eq.equipo_id,
+		  COALESCE(strftime('%d/%m/%Y %H:%M:%S', en.fecha_entrega), '') AS fecha_entrega,
+		  en.trabajos_realizados,
+		  en.estado_final_equipo,
+		  en.conformidad_cliente,
+		  en.comprobante_nro,
+		  eq.codigo,
+		  (u.nombres || ' ' || u.apellidos) AS nombres
+		FROM entregas en
+		INNER JOIN equipos eq ON en.equipo_id = eq.equipo_id
+		INNER JOIN usuarios u ON en.usuario_id = u.usuario_id
+		WHERE en.entrega_id = ?`, id)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "entregas", "Error al ejecutar la consulta "+err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&entrega.EntregaId,
+			&entrega.EquipoId,
+			&entrega.FechaEntrega,
+			&entrega.TrabajosRealizados,
+			&entrega.EstadoFinalEquipo,
+			&entrega.ConformidadCliente,
+			&entrega.ComprobanteNro,
+			&entrega.EquipoCodigo,
+			&entrega.Usuario)
+
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "entregas", "Error al leer los registros "+err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
+		}
+
+	}
+
+	return c.JSON(entrega)
 
 }
 
@@ -105,7 +167,7 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 	claims, err = helpers.ReadClaims(c)
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error al leer los clains "+err.Error())
+		_ = helpers.InsertLogsError(conn, "entregas", "error al leer los clains "+err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
@@ -395,9 +457,10 @@ func OrdenEntrega(c *fiber.Ctx) error {
 		id   = c.Params("id")
 	)
 
-	equipoID, err := strconv.Atoi(id)
-	if err != nil || equipoID <= 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID de equipo no valido"})
+	entregaID, err := strconv.Atoi(id)
+
+	if err != nil || entregaID <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID de entrega no válido"})
 	}
 
 	query := `
@@ -424,14 +487,14 @@ func OrdenEntrega(c *fiber.Ctx) error {
 			COALESCE(cr.costo_total, 0.00) AS costo_total,
 			COALESCE(cr.abono, 0.00) AS abono,
 			COALESCE(cr.saldo, 0.00) AS saldo
-		FROM equipos e
+		FROM entregas en
+		INNER JOIN equipos e ON en.equipo_id = e.equipo_id
 		INNER JOIN clientes c ON e.cliente_id = c.cliente_id
 		INNER JOIN marcas m ON e.marca_id = m.marca_id
-		LEFT JOIN entregas en ON e.equipo_id = en.equipo_id
 		LEFT JOIN cuentas_reparacion cr ON e.equipo_id = cr.equipo_id
-		WHERE e.equipo_id = ?;`
+		WHERE en.entrega_id = ?;`
 
-	err = conn.QueryRow(query, equipoID).Scan(
+	err = conn.QueryRow(query, entregaID).Scan(
 		&data.ComprobanteNro,
 		&data.FechaEntrega,
 		&data.TrabajosRealizados,
@@ -454,7 +517,7 @@ func OrdenEntrega(c *fiber.Ctx) error {
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Informacion de entrega no encontrada"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Información de entrega no encontrada"})
 	} else if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "Error al consultar acta de entrega: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al consultar los datos de entrega"})
@@ -470,7 +533,7 @@ func OrdenEntrega(c *fiber.Ctx) error {
 	pdf.CellFormat(70, 7, fmt.Sprintf("ENTREGA: %s", data.ComprobanteNro.String), "1", 1, "C", false, 0, "")
 
 	pdf.SetFont("Arial", "I", 9)
-	pdf.Cell(0, 5, "Sistema de Gestion de Mantenimiento de Computadoras")
+	pdf.Cell(0, 5, "Sistema de Gestión de Mantenimiento de Computadoras")
 	pdf.Ln(8)
 
 	pdf.Line(15, pdf.GetY(), 195, pdf.GetY())
@@ -478,16 +541,16 @@ func OrdenEntrega(c *fiber.Ctx) error {
 
 	pdf.SetFont("Arial", "B", 11)
 	pdf.SetFillColor(230, 230, 230)
-	pdf.CellFormat(180, 6, " 1. INFORMACION DEL CLIENTE", "1", 1, "L", true, 0, "")
+	pdf.CellFormat(180, 6, " 1. INFORMACIÓN DEL CLIENTE", "1", 1, "L", true, 0, "")
 
 	pdf.SetFont("Arial", "", 9)
 	nombreCliente := fmt.Sprintf("%s %s", data.ClienteNombres.String, data.ClienteApellidos.String)
 	pdf.CellFormat(30, 6, "Cliente:", "L", 0, "L", false, 0, "")
 	pdf.CellFormat(150, 6, helpers.Limitar(nombreCliente, 60), "R", 1, "L", false, 0, "")
 
-	pdf.CellFormat(30, 6, "Identificacion:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(30, 6, "Identificación:", "L", 0, "L", false, 0, "")
 	pdf.CellFormat(60, 6, data.ClienteIdentificacion.String, "", 0, "L", false, 0, "")
-	pdf.CellFormat(25, 6, "Telefono:", "", 0, "L", false, 0, "")
+	pdf.CellFormat(25, 6, "Teléfono:", "", 0, "L", false, 0, "")
 	pdf.CellFormat(65, 6, data.ClienteTelefono.String, "R", 1, "L", false, 0, "")
 
 	pdf.CellFormat(30, 6, "Email:", "L,B", 0, "L", false, 0, "")
@@ -500,14 +563,14 @@ func OrdenEntrega(c *fiber.Ctx) error {
 
 	pdf.SetFont("Arial", "", 9)
 
-	pdf.CellFormat(30, 6, "Codigo Equipo:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(30, 6, "Código Equipo:", "L", 0, "L", false, 0, "")
 	pdf.CellFormat(55, 6, data.Codigo.String, "", 0, "L", false, 0, "")
 	pdf.CellFormat(35, 6, "Fecha de Entrega:", "", 0, "L", false, 0, "")
 	pdf.CellFormat(60, 6, data.FechaEntrega.String, "R", 1, "L", false, 0, "")
 
 	pdf.CellFormat(30, 6, "Tipo / Marca:", "L", 0, "L", false, 0, "")
 	pdf.CellFormat(55, 6, fmt.Sprintf("%s - %s", data.TipoEquipo.String, data.Marca.String), "", 0, "L", false, 0, "")
-	pdf.CellFormat(35, 6, "Numero de Serie:", "", 0, "L", false, 0, "")
+	pdf.CellFormat(35, 6, "Número de Serie:", "", 0, "L", false, 0, "")
 	pdf.CellFormat(60, 6, data.NumeroSerie.String, "R", 1, "L", false, 0, "")
 
 	pdf.CellFormat(30, 6, "Estado Final:", "L,B", 0, "L", false, 0, "")
@@ -534,15 +597,15 @@ func OrdenEntrega(c *fiber.Ctx) error {
 	if data.Saldo <= 0 {
 		pdf.Ln(3)
 		pdf.SetFont("Arial", "B", 10)
-		pdf.SetTextColor(0, 128, 0) // Color verde
+		pdf.SetTextColor(0, 128, 0)
 		pdf.CellFormat(180, 5, "*** CUENTA CANCELADA EN SU TOTALIDAD ***", "", 1, "C", false, 0, "")
-		pdf.SetTextColor(0, 0, 0) // Restaurar negro
+		pdf.SetTextColor(0, 0, 0)
 	}
 
 	pdf.Ln(10)
 
 	pdf.SetFont("Arial", "I", 8)
-	pdf.MultiCell(180, 4, "Declaracion de Conformidad: Al firmar este documento, el cliente declara recibir el equipo en mencion a entera satisfaccion, habiendo verificado el correcto funcionamiento de los trabajos realizados.", "", "C", false)
+	pdf.MultiCell(180, 4, "Declaración de Conformidad: Al firmar este documento, el cliente declara recibir el equipo en mención a entera satisfacción, habiendo verificado el correcto funcionamiento de los trabajos realizados.", "", "C", false)
 
 	pdf.Ln(25)
 
@@ -567,5 +630,4 @@ func OrdenEntrega(c *fiber.Ctx) error {
 	c.Set("Content-Type", "application/pdf")
 	c.Set("Content-Disposition", fmt.Sprintf(`inline; filename="acta_entrega_%s.pdf"`, data.Codigo.String))
 	return c.Send(buf.Bytes())
-
 }

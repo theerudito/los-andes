@@ -2,13 +2,10 @@ import React, {useEffect, useState} from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Pencil,
-    Trash2,
     Search,
     RotateCcw,
     Wrench,
     FileText,
-    Calendar,
-    Filter,
     ArrowLeft,
     Plus,
 } from 'lucide-react';
@@ -18,7 +15,7 @@ import {useHistorial} from "../../store/useHistorial.ts";
 
 export default function PaginaHistorial(): React.ReactElement {
     const { OpenModal } = useModal((state) => state);
-    const { ObtenerHistoriales, ObtenerPago, DescargarPdf, listar_historial, setEquipoId } = useHistorial((state) => state);
+    const { ObtenerHistoriales, ObtenerHistorial, DescargarPdf, listar_historial, setEquipoId } = useHistorial((state) => state);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
@@ -33,9 +30,6 @@ export default function PaginaHistorial(): React.ReactElement {
 
     const [busqueda, setBusqueda] = useState<string>('');
 
-    const [fechaDesde, setFechaDesde] = useState<string>('2026-07-01');
-    const [fechaHasta, setFechaHasta] = useState<string>('2026-07-21');
-
     const historialFiltrado = listar_historial.filter((h) => {
         return equipo_id ? h.equipo_id === Number(equipo_id) : true;
     });
@@ -43,6 +37,11 @@ export default function PaginaHistorial(): React.ReactElement {
     const handleRegresar = () => {
         navigate(-1);
     };
+
+    async function VerHistorial(historialId:number){
+        await ObtenerHistorial(historialId)
+        OpenModal(ModalLista.modal_historial)
+    }
 
     const handleLimpiarBusqueda = () => setBusqueda('');
 
@@ -126,53 +125,16 @@ export default function PaginaHistorial(): React.ReactElement {
                             <Plus className="w-3.5 h-3.5" />
                             <span>Nuevo Historial</span>
                         </button>
+
+                        <button
+                            onClick={() => DescargarPdf(Number(equipo_id))}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"
+                            title="Exportar Historial a PDF"
+                        >
+                            <FileText className="w-4 h-4" />
+                            <span>Generar Reporte PDF</span>
+                        </button>
                     </div>
-
-                </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 w-full flex flex-wrap items-center justify-between gap-4">
-
-                <div className="flex items-center gap-2 text-gray-700 font-semibold text-xs uppercase tracking-wider">
-                    <Filter className="w-4 h-4 text-blue-600" />
-                    <span>Generación de Reportes PDF de Historial</span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400" /> Desde:
-                        </label>
-                        <input
-                            type="date"
-                            value={fechaDesde}
-                            onChange={(e) => setFechaDesde(e.target.value)}
-                            className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400" /> Hasta:
-                        </label>
-                        <input
-                            type="date"
-                            value={fechaHasta}
-                            onChange={(e) => setFechaHasta(e.target.value)}
-                            className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500"
-                        />
-                    </div>
-
-                    <div className="w-[1px] h-6 bg-gray-200 hidden sm:block" />
-
-                    <button
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"
-                        title="Exportar Historial a PDF"
-                    >
-                        <FileText className="w-4 h-4" />
-                        <span>Generar Reporte PDF</span>
-                    </button>
 
                 </div>
             </div>
@@ -236,17 +198,11 @@ export default function PaginaHistorial(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-1.5">
                                             <button
-                                                onClick={() => OpenModal(ModalLista.modal_historial)}
+                                                onClick={() => VerHistorial(item.historial_id)}
                                                 className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
                                                 title="Actualizar / Editar Historial"
                                             >
                                                 <Pencil className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 cursor-pointer"
-                                                title="Eliminar registro"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </td>

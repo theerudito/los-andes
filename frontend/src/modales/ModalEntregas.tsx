@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
     X,
     Save,
@@ -11,9 +10,34 @@ import {
 } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
+import {useEntregas} from "../store/useEntregas.ts";
+import React from "react";
 
 export default function ModalEntregas(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
+    const { form_entrega, EnviarEntrega, equipo_id } = useEntregas((state) => state);
+
+    const handleChangeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        useEntregas.setState((state) => ({
+            form_entrega: {
+                ...state.form_entrega,
+                [name]: Number(value)
+            },
+        }));
+    };
+
+    const handleChangeTextArea = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => {
+        const { name, value } = e.target;
+        useEntregas.setState((state) => ({
+            form_entrega: {
+                ...state.form_entrega,
+                [name]: value,
+            },
+        }));
+    };
 
     if (modalName !== ModalLista.modal_entrega) return null;
 
@@ -25,7 +49,7 @@ export default function ModalEntregas(): React.ReactElement | null {
                     <div className="flex items-center gap-2">
                         <PackageCheck size={18} />
                         <h2 className="font-semibold tracking-wide text-sm md:text-base">
-                            Registrar Entrega de Equipo
+                            Registrar Entrega
                         </h2>
                     </div>
                     <button
@@ -45,9 +69,11 @@ export default function ModalEntregas(): React.ReactElement | null {
                                 <Laptop size={14} className="text-amber-600" /> ID Equipo
                             </label>
                             <input
+                                value={equipo_id}
                                 type="number"
                                 name="equipo_id"
                                 required
+                                disabled
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-mono font-bold shadow-sm"
                             />
                         </div>
@@ -57,6 +83,8 @@ export default function ModalEntregas(): React.ReactElement | null {
                                 <CheckCircle2 size={14} className="text-amber-600" /> Conformidad Cliente
                             </label>
                             <select
+                                value={form_entrega.conformidad_cliente}
+                                onChange={handleChangeSelect}
                                 name="conformidad_cliente"
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-semibold uppercase cursor-pointer shadow-sm"
@@ -72,6 +100,8 @@ export default function ModalEntregas(): React.ReactElement | null {
                             <Wrench size={14} className="text-amber-600" /> Trabajos Realizados
                         </label>
                         <textarea
+                            value={form_entrega.trabajos_realizados}
+                            onChange={handleChangeTextArea}
                             name="trabajos_realizados"
                             rows={2}
                             placeholder="Ej: SE FORMATEO Y MANTENIMIENTO GENERAL"
@@ -85,6 +115,8 @@ export default function ModalEntregas(): React.ReactElement | null {
                             <FileText size={14} className="text-amber-600" /> Estado Final del Equipo
                         </label>
                         <textarea
+                            value={form_entrega.estado_final_equipo}
+                            onChange={handleChangeTextArea}
                             name="estado_final_equipo"
                             rows={2}
                             placeholder="Ej: BUEN ESTADO AUN HASTA NUEVO DIAGNOSTICO"
@@ -98,6 +130,8 @@ export default function ModalEntregas(): React.ReactElement | null {
                             <MessageSquare size={14} className="text-amber-600" /> Observaciones Adicionales
                         </label>
                         <textarea
+                            value={form_entrega.observaciones}
+                            onChange={handleChangeTextArea}
                             name="observaciones"
                             rows={2}
                             placeholder="Ej: LISTO Y RECIBIDO POR EL CLIENTE"
@@ -115,6 +149,7 @@ export default function ModalEntregas(): React.ReactElement | null {
                         </button>
 
                         <button
+                            onClick={EnviarEntrega}
                             type="submit"
                             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >

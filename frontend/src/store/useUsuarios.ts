@@ -111,7 +111,7 @@ export const useUsuarios = create<Data>((set, get) => ({
 
         const usuario = ObtenerToken()
 
-        if (usuario.user_id === id) {
+        if (usuario?.user_id === id) {
             toast.info("No es posible borrar a un usuario ya logeado");
             return;
         }
