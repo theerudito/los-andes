@@ -2,6 +2,8 @@ import { create } from "zustand";
 import {toast} from "sonner";
 import type {Equipo, EquipoDTO, RPT_Equipos} from "../modelos/equipos.ts";
 import {equipoService} from "../servicios/equipoServicio.ts";
+import {clienteService} from "../servicios/clienteServicio.ts";
+import {useClientes} from "./useClientes.ts";
 
 const initialEquipo = (): Equipo => ({
     equipo_id: 0,
@@ -63,8 +65,15 @@ export const useEquipos = create<Data>((set, get) => ({
 
         set({ isLoading: true });
         try {
-            const data = await equipoService.getEquipoById(equipoId);
-            set({ form_equipo: data, isEditing: true, isLoading: false });
+            const equipo = await equipoService.getEquipoById(equipoId);
+            set({ form_equipo: equipo, isEditing: true, isLoading: false });
+
+            const cliente = await clienteService.getClienteById(get().form_equipo.cliente_id);
+            useClientes.setState({
+                form_cliente: cliente,
+                clienteId: cliente.cliente_id
+            });
+
         } catch (error) {
             console.error(`Error al consultar el equipo ID ${equipoId}:`, error);
             set({ isLoading: false });
@@ -87,7 +96,7 @@ export const useEquipos = create<Data>((set, get) => ({
                 fecha_estimada_entrega: form_equipo.fecha_estimada_entrega,
                 fecha_modificacion: form_equipo.fecha_modificacion,
                 fecha_recepcion: form_equipo.fecha_recepcion,
-                marca_id: form_equipo.marca_id,
+                marca_id: form_equipo.marca_id == 0 ? 1 : form_equipo.marca_id,
                 modelo: form_equipo.modelo,
                 numero_serie: form_equipo.numero_serie,
                 observacion: form_equipo.observacion,

@@ -4,8 +4,6 @@ import {
     Plus,
     Pencil,
     Trash2,
-    Search,
-    RotateCcw,
     History,
     CreditCard,
     Tag,
@@ -106,21 +104,6 @@ export default function PaginaEquipos(): React.ReactElement {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
-
-                            <button
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm"
-                                title="Limpiar búsqueda"
-                            >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                                <span>Limpiar</span>
-                            </button>
-
-                            <button
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm"
-                            >
-                                <Search className="w-3.5 h-3.5" />
-                                <span>Buscar</span>
-                            </button>
 
                             <button
                                 onClick={() => OpenModal(ModalLista.modal_marca)}

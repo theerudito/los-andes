@@ -147,12 +147,12 @@ func ObtenerCliente(c *fiber.Ctx) error {
 func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
 
 	var (
-		clientes []models.Clientes
-		cliente  models.Clientes
-		conn     = database.GetDB()
-		valor    = c.Params("identificacion")
-		rows     *sql.Rows
-		err      error
+		cliente models.Clientes
+		conn    = database.GetDB()
+		valor   = c.Params("identificacion")
+		rows    *sql.Rows
+		err     error
+		found   bool
 	)
 
 	rows, err = conn.Query(`
@@ -197,14 +197,14 @@ func ObtenerClientePorIdentificacion(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
-		clientes = append(clientes, cliente)
+		found = true
 	}
 
-	if len(clientes) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
+	if found == false {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontro el registro"})
 	}
 
-	return c.JSON(clientes)
+	return c.JSON(cliente)
 
 }
 
@@ -291,7 +291,7 @@ func CrearCliente(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
-	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente"})
+	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente", "cliente_id": ClienteId})
 }
 
 func ModificarCliente(c *fiber.Ctx) error {
@@ -383,43 +383,55 @@ func ModificarCliente(c *fiber.Ctx) error {
 
 func EliminarCliente(c *fiber.Ctx) error {
 	var (
-		ClienteId int
-		conn      = database.GetDB()
-		err       error
-		tx        *sql.Tx
-		claims    *models.CustomClaims
+		ClienteId    int
+		equiposCount int
+		conn         = database.GetDB()
+		err          error
+		tx           *sql.Tx
+		claims       *models.CustomClaims
 	)
 
 	claims, err = helpers.ReadClaims(c)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "clientes", "error al leer los clains "+err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+		_ = helpers.InsertLogsError(conn, "clientes", "error al leer los claims "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los claims"})
 	}
 
-	id, _ := strconv.Atoi(c.Params("id"))
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID inválido"})
+	}
 
 	err = conn.QueryRow(`SELECT cliente_id FROM clientes WHERE cliente_id = ?`, id).Scan(&ClienteId)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "registro no existe"})
 		}
-
 		_ = helpers.InsertLogsError(conn, "clientes", "error ejecutando la consulta "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
 	}
 
-	tx, err = conn.Begin()
+	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE cliente_id = ?`, id).Scan(&equiposCount)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "clientes", "error consultando equipos asociados "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error consultando equipos asociados"})
+	}
 
+	if equiposCount > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "No se puede eliminar el cliente porque tiene equipos registrados a su nombre",
+		})
+	}
+
+	tx, err = conn.Begin()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error iniciando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error iniciando transacción"})
 	}
 
 	defer tx.Rollback()
 
 	_, err = tx.Exec(`DELETE FROM clientes WHERE cliente_id = ?`, id)
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error eliminando el registro "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error eliminando el registro"})
@@ -428,18 +440,16 @@ func EliminarCliente(c *fiber.Ctx) error {
 	err = helpers.InsertLogs(tx, "DELETE", "clientes", claims.Name, "registro eliminado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
 	}
 
 	err = tx.Commit()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "error confirmando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error confirmando transacción"})
 	}
 
 	return c.Status(200).JSON(fiber.Map{"message": "registro eliminado correctamente"})
-
 }
 
 func ReporteCliente(c *fiber.Ctx) error {

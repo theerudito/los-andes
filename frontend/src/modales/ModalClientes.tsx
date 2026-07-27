@@ -36,6 +36,25 @@ export default function ModalCliente(): React.ReactElement | null {
         }));
     };
 
+    function Clear(){
+        CloseModal()
+        useClientes.setState({
+            form_cliente: {
+                cliente_id: 0,
+                identificacion: "",
+                tipo_identificacion: "",
+                nombres: "",
+                apellidos: "",
+                telefono: "",
+                email: "",
+                direccion: "",
+                fecha_creacion: "",
+                fecha_modificacion: "",
+            },
+            isEditing: false,
+        })
+    }
+
     if (modalName !== ModalLista.modal_cliente) return null;
 
     return (
@@ -52,7 +71,7 @@ export default function ModalCliente(): React.ReactElement | null {
                     <button
                         type="button"
                         className="cursor-pointer hover:bg-white/20 transition-all rounded-full p-1.5 active:scale-95"
-                        onClick={CloseModal}
+                        onClick={Clear}
                     >
                         <X size={18} />
                     </button>
@@ -154,7 +173,7 @@ export default function ModalCliente(): React.ReactElement | null {
                     <div className="pt-3 border-t border-slate-200/80 flex items-center justify-end gap-2 shrink-0">
                         <button
                             type="button"
-                            onClick={CloseModal}
+                            onClick={Clear}
                             className="cursor-pointer px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-lg transition-all active:scale-95"
                         >
                             Cancelar

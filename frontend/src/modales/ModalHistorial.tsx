@@ -47,6 +47,19 @@ export default function ModalHistorial(): React.ReactElement | null {
         }));
     };
 
+    function Clear(){
+        CloseModal()
+        useHistorial.setState({
+            form_historial: {
+                equipo_id: 0,
+                estado_id: 0,
+                observaciones_tecnicas: "",
+                historial_id: 0
+            },
+            isEditing: false,
+        })
+    }
+
     if (modalName !== ModalLista.modal_historial) return null;
 
     return (
@@ -63,7 +76,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                     <button
                         type="button"
                         className="cursor-pointer hover:bg-white/20 transition-all rounded-full p-1.5 active:scale-95"
-                        onClick={CloseModal}
+                        onClick={Clear}
                     >
                         <X size={18} />
                     </button>
@@ -122,7 +135,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                     <div className="pt-3 border-t border-slate-200/80 flex items-center justify-end gap-2 shrink-0">
                         <button
                             type="button"
-                            onClick={CloseModal}
+                            onClick={Clear}
                             className="cursor-pointer px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-lg transition-all active:scale-95"
                         >
                             Cancelar
@@ -131,7 +144,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                         <button
                             onClick={EnviarHistorial}
                             type="submit"
-                            className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-yellow-600 to-yellow-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all active:scale-95"
+                            className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-yellow-600 to-yellow-600 hover:from-yellow-700 hover:to-yellow-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >
                             <Save size={15} />
                             <span>Guardar Historial</span>

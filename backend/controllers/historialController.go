@@ -166,7 +166,7 @@ func ConsultarHistorial(c *fiber.Ctx) error {
 	return c.JSON(historial)
 }
 
-func ActualizarEstadoEquipo(c *fiber.Ctx) error {
+func CrearEstadoEquipo(c *fiber.Ctx) error {
 	var (
 		conn      = database.GetDB()
 		err       error
@@ -183,14 +183,12 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	}
 
 	claims, err = helpers.ReadClaims(c)
-
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "historial", "error al leer los clains "+err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+		_ = helpers.InsertLogsError(conn, "historial", "error al leer los claims "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los claims"})
 	}
 
 	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, historial.EquipoId).Scan(&estado)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El equipo no existe"})
@@ -223,8 +221,8 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	}
 
 	if historial.EstadoId == 7 {
-		var err = conn.QueryRow(`SELECT saldo FROM cuentas_reparacion WHERE equipo_id = ?`, historial.EquipoId).Scan(&saldo)
-		if err != nil {
+		err = conn.QueryRow(`SELECT saldo FROM cuentas_reparacion WHERE equipo_id = ?`, historial.EquipoId).Scan(&saldo)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			_ = helpers.InsertLogsError(conn, "cuentas", "error consultando saldo para cancelar "+err.Error())
 			return c.Status(500).JSON(fiber.Map{"message": "error al verificar saldo de cuenta"})
 		}
@@ -239,7 +237,6 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	}
 
 	tx, err = conn.Begin()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "historial", "error iniciando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error de base de datos"})
@@ -276,7 +273,8 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 		fechaActual,
 		claims.UserId,
 		historial.EquipoId,
-		historial.EstadoId)
+		historial.EstadoId,
+	)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "historial", "error insertando historial: "+err.Error())
@@ -284,21 +282,136 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	}
 
 	err = tx.Commit()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "historial", "error confirmando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al procesar los cambios"})
 	}
 
 	err = helpers.InsertLogs(conn, "UPDATE", "historial", claims.Name, "registro actualizado correctamente")
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "historial", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
+	}
+
+	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente"})
+}
+
+func ActualizarEstadoEquipo(c *fiber.Ctx) error {
+	var (
+		conn      = database.GetDB()
+		err       error
+		estado    int
+		claims    *models.CustomClaims
+		tx        *sql.Tx
+		historial models.Historial
+	)
+
+	if err := c.BodyParser(&historial); err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "Cuerpo de solicitud inválido")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+	}
+
+	claims, err = helpers.ReadClaims(c)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "error al leer los claims "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los claims"})
+	}
+
+	if historial.HistorialId <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID de historial inválido"})
+	}
+
+	err = conn.QueryRow(`
+		SELECT equipo_id 
+		FROM historial_reparaciones 
+		WHERE historial_id = ?`, historial.HistorialId).Scan(&historial.EquipoId)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El registro de historial no existe"})
+		}
+		_ = helpers.InsertLogsError(conn, "historial", "error consultando el registro de historial "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el historial"})
+	}
+
+	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, historial.EquipoId).Scan(&estado)
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "error consultando estado actual del equipo "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el estado del equipo"})
+	}
+
+	switch claims.Rol {
+	case "TECNICO":
+		if historial.EstadoId >= 6 {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Permiso denegado. Como Técnico no estás autorizado para Entregar o Cancelar equipos."})
+		}
+	case "VENDEDOR":
+		if historial.EstadoId < 6 {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Permiso denegado. El perfil de Vendedor solo puede procesar Entregas o Cancelaciones."})
+		}
+	}
+
+	if estado == 6 || estado == 7 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "No se puede modificar el historial porque el equipo ya se encuentra en un estado final (Entregado/Cancelado)."})
+	}
+
+	tx, err = conn.Begin()
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "error iniciando transacción "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error de base de datos"})
+	}
+
+	defer tx.Rollback()
+
+	fechaActual := helpers.FechaActual()
+
+	_, err = tx.Exec(`
+		UPDATE historial_reparaciones 
+		SET observaciones_tecnicas = ?, 
+		    estado_id = ?, 
+		    fecha = ?, 
+		    usuario_id = ? 
+		WHERE historial_id = ?`,
+		strings.ToUpper(historial.ObservacionesTecnicas),
+		historial.EstadoId,
+		fechaActual,
+		claims.UserId,
+		historial.HistorialId,
+	)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "error actualizando registro de historial "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar el historial técnico"})
+	}
+
+	_, err = tx.Exec(`
+		UPDATE equipos 
+		SET estado_id = ?, 
+		    fecha_modificacion = ? 
+		WHERE equipo_id = ?`,
+		historial.EstadoId,
+		fechaActual,
+		historial.EquipoId,
+	)
+
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "equipos", "error actualizando estado del equipo "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar estado del equipo"})
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "error confirmando transacción "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al procesar los cambios"})
+	}
+
+	err = helpers.InsertLogs(conn, "UPDATE", "historial", claims.Name, "registro de historial actualizado correctamente")
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "historial", "error insertando la auditoria "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
 	}
 
 	return c.Status(200).JSON(fiber.Map{"message": "registro actualizado correctamente"})
-
 }
 
 func ReporteHistorial(c *fiber.Ctx) error {

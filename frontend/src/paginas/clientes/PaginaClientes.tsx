@@ -3,8 +3,6 @@ import {
     Plus,
     Pencil,
     Trash2,
-    Search,
-    RotateCcw,
     FileText,
     Calendar,
     Filter
@@ -39,6 +37,13 @@ export default function PaginaClientes(): React.ReactElement {
         DescargarPdf(obj);
     }
 
+    const usuariosFiltrados = listar_clientes.filter((u) =>
+        u.nombres.toLowerCase().includes(busqueda.toLowerCase()) ||
+        u.apellidos.toLowerCase().includes(busqueda.toLowerCase()) ||
+        u.identificacion.includes(busqueda) ||
+        u.email.toLowerCase().includes(busqueda.toLowerCase())
+    );
+
     return (
         <div className="space-y-6 w-full">
 
@@ -61,20 +66,6 @@ export default function PaginaClientes(): React.ReactElement {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm cursor-pointer"
-                            title="Limpiar búsqueda"
-                        >
-                            <RotateCcw className="w-3.5 h-3.5"/>
-                            <span>Limpiar</span>
-                        </button>
-
-                        <button
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm cursor-pointer"
-                        >
-                            <Search className="w-3.5 h-3.5"/>
-                            <span>Buscar</span>
-                        </button>
 
                         <button
                             onClick={() => OpenModal(ModalLista.modal_cliente)}
@@ -151,8 +142,8 @@ export default function PaginaClientes(): React.ReactElement {
                         </thead>
 
                         <tbody className="divide-y divide-gray-100">
-                        {listar_clientes.length > 0 ? (
-                            listar_clientes.map((cliente) => (
+                        {usuariosFiltrados.length > 0 ? (
+                            usuariosFiltrados.map((cliente) => (
                                 <tr key={cliente.cliente_id} className="hover:bg-gray-50/80 transition-colors">
                                     <td className="px-4 py-3.5 font-medium text-gray-900">
                                         #{cliente.cliente_id}

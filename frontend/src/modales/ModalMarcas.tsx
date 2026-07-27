@@ -11,6 +11,7 @@ import { useModal } from "../store/useModal.ts";
 import { ModalLista } from "../helpers/ModalLista.ts";
 import {useMarcas} from "../store/useMarcas.ts";
 import React, {useEffect} from "react";
+import {useUsuarios} from "../store/useUsuarios.ts";
 
 export default function ModalMarcas() {
     const { modalName, CloseModal } = useModal((state) => state);
@@ -19,8 +20,6 @@ export default function ModalMarcas() {
     useEffect(() => {
         ObtenerMarcas();
     }, []);
-
-    if (modalName !== ModalLista.modal_marca) return null;
 
     const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name } = e.target;
@@ -35,6 +34,21 @@ export default function ModalMarcas() {
         });
     };
 
+    function Clear(){
+        CloseModal()
+        useMarcas.setState({
+            form_marca: {
+                marca_id: 0,
+                nombre: "",
+                fecha_creacion: "",
+                fecha_modificacion: ""
+            },
+            isEditing: false,
+        })
+    }
+
+    if (modalName !== ModalLista.modal_marca) return null;
+
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[60] p-4 transition-all duration-300">
             <div className="w-full max-w-xl bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
@@ -47,7 +61,7 @@ export default function ModalMarcas() {
                     <button
                         type="button"
                         className="cursor-pointer hover:bg-white/20 transition-all rounded-full p-1.5 active:scale-95"
-                        onClick={CloseModal}
+                        onClick={Clear}
                     >
                         <X size={18} />
                     </button>

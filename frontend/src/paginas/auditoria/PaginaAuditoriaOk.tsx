@@ -126,15 +126,6 @@ export default function PaginaAuditoriaOk(): React.ReactElement {
 
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={handleLimpiar}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm"
-                            title="Limpiar filtros"
-                        >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Limpiar</span>
-                        </button>
-
-                        <button
                             onClick={handleBuscar}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm"
                         >

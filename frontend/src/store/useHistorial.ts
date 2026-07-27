@@ -69,7 +69,7 @@ export const useHistorial = create<Data>((set, get) => ({
         try {
             const payload: Historial = {
                 historial_id: form_historial.historial_id,
-                equipo_id: form_historial.equipo_id,
+                equipo_id: get().equipo_id,
                 estado_id: form_historial.estado_id,
                 observaciones_tecnicas: form_historial.observaciones_tecnicas
             };

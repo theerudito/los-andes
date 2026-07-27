@@ -20,9 +20,11 @@ type Data = {
     form_cliente: Cliente;
     listar_clientes: Cliente[];
     isEditing: boolean;
+    clienteId : number;
     isLoading: boolean;
     ObtenerClientes: () => Promise<void>;
     ObtenerCliente: (id?: number) => Promise<void>;
+    ObtenerClientePorIdentifiacion: (identificacion: string) => Promise<void>;
     EnviarCliente: () => Promise<void>;
     EliminarCliente: (id: number) => Promise<void>;
     DescargarPdf: (req: RPT_Clientes) => Promise<void>;
@@ -34,6 +36,7 @@ export const useClientes = create<Data>((set, get) => ({
     listar_clientes: [],
     isEditing: false,
     isLoading: false,
+    clienteId: 0,
 
     ObtenerClientes: async () => {
         set({ isLoading: true });
@@ -47,6 +50,30 @@ export const useClientes = create<Data>((set, get) => ({
         } catch (error: any) {
             console.error("Error al obtener lista de clientes:", error.message);
             set({ listar_clientes: [], isLoading: false });
+        }
+    },
+
+    ObtenerClientePorIdentifiacion: async (identificacion: string) => {
+        try {
+            const data = await clienteService.getClienteByIdentificacion(identificacion);
+
+            const cliente = {
+                cliente_id: data.cliente_id,
+                identificacion: data.identificacion,
+                tipo_identificacion: data.tipo_identificacion,
+                nombres: data.nombres,
+                apellidos: data.apellidos,
+                telefono: data.telefono,
+                email: data.email,
+                direccion: data.direccion,
+                fecha_creacion: data.fecha_creacion,
+                fecha_modificacion: data.fecha_modificacion,
+            };
+
+            set({ form_cliente: cliente, clienteId : data.cliente_id});
+
+        } catch (error : any) {
+            toast.error(error?.message);
         }
     },
 
@@ -115,8 +142,8 @@ export const useClientes = create<Data>((set, get) => ({
     DescargarPdf: async (req: RPT_Clientes) => {
         try {
             await clienteService.reporteClientePdf(req);
-        } catch (error) {
-            console.error("Error al descargar reporte en PDF:", error);
+        } catch (error: any) {
+            toast.error(error?.message);
         }
     },
 

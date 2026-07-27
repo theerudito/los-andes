@@ -2,17 +2,17 @@ package helpers
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
 func ObtenerCodigo(exec ExecutorDB, prefijo string) (string, error) {
-
 	var actual, digitos int
 
 	query := `SELECT actual, digitos FROM secuencial WHERE prefijo = ?`
 	err := exec.QueryRow(query, prefijo).Scan(&actual, &digitos)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return "", fmt.Errorf("el prefijo '%s' no existe en la tabla secuencial", prefijo)
 		}
 		return "", err
@@ -32,7 +32,6 @@ func ObtenerCodigo(exec ExecutorDB, prefijo string) (string, error) {
 }
 
 func ActualizarCodigo(exec ExecutorDB, prefijo string) error {
-
 	query := `
     UPDATE secuencial 
     SET actual = actual + 1 

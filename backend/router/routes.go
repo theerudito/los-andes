@@ -78,7 +78,7 @@ func SetupRoutes(app *fiber.App) {
 	protectedHistorial := v1.Group("/historial", helpers.JWTMiddleware())
 	protectedHistorial.Get("/:id", controllers.ConsultarHistorial)
 	protectedHistorial.Get("/equipo/:id", controllers.ConsultarHistorialEquipo)
-	protectedHistorial.Post("/", controllers.ActualizarEstadoEquipo)
+	protectedHistorial.Post("/", controllers.CrearEstadoEquipo)
 	protectedHistorial.Put("/", controllers.ActualizarEstadoEquipo)
 	protectedHistorial.Get("/pdf/:id", controllers.ReporteHistorial)
 
