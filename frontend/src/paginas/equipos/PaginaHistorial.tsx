@@ -151,7 +151,6 @@ export default function PaginaHistorial(): React.ReactElement {
                             <th className="px-4 py-3.5 min-w-[220px]">Observaciones Técnicas</th>
                             <th className="px-4 py-3.5 w-32">Estado</th>
                             <th className="px-4 py-3.5 min-w-[140px]">Técnico</th>
-                            <th className="px-4 py-3.5 w-36">Fecha</th>
                             <th className="px-4 py-3.5 w-24 text-center">Acciones</th>
                         </tr>
                         </thead>
@@ -189,10 +188,6 @@ export default function PaginaHistorial(): React.ReactElement {
                                             <Wrench className="w-3.5 h-3.5 text-gray-400" />
                                             <span>{item.nombres_usuario} {item.apellidos_usuario}</span>
                                         </div>
-                                    </td>
-
-                                    <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-400">
-                                        {item.fecha}
                                     </td>
 
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">

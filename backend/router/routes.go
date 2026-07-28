@@ -86,7 +86,6 @@ func SetupRoutes(app *fiber.App) {
 	protectedPagos := v1.Group("/pago", helpers.JWTMiddleware())
 	protectedPagos.Get("/:id", controllers.ConsultarCuenta)
 	protectedPagos.Get("/equipo/:id", controllers.ConsultarCuentaEquipo)
-	protectedPagos.Post("/", controllers.ActualizarCuentaEquipo)
 	protectedPagos.Put("/", controllers.ActualizarCuentaEquipo)
 	protectedPagos.Get("/pdf/:id", controllers.ComprobantePago)
 
@@ -96,8 +95,7 @@ func SetupRoutes(app *fiber.App) {
 	protectedEntregas.Get("/equipo/:id", controllers.ConsultarEntregaPorEquipo)
 	protectedEntregas.Get("/pdf/:id", controllers.OrdenEntrega)
 	protectedEntregas.Post("/", controllers.RegistrarEntrega)
-	protectedEntregas.Put("/", controllers.RegistrarEntrega)
-	protectedEntregas.Post("/procesar", controllers.ProcesarEntregaEquipo)
+	protectedEntregas.Put("/", controllers.ModificarEntrega)
 
 	// logs error
 	protectedLogsError := v1.Group("/logs-error", helpers.JWTMiddleware())

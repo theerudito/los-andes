@@ -2,8 +2,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Plus,
     Pencil,
-    Search,
-    RotateCcw,
     ArrowLeft,
     PackageCheck,
     User,
@@ -11,7 +9,7 @@ import {
     XCircle,
     PrinterCheck
 } from 'lucide-react';
-import React, {useEffect, useState} from "react";
+import React, {useEffect} from "react";
 import { useModal } from '../../store/useModal.ts';
 import { ModalLista } from '../../helpers/ModalLista.ts';
 import {useEntregas} from "../../store/useEntregas.ts";
@@ -30,12 +28,6 @@ export default function PaginaEntregas(): React.ReactElement {
         }
         ObtenerEntregas();
     }, [equipo_id]);
-
-    const [busqueda, setBusqueda] = useState<string>('');
-
-    const entregasFiltradas = listar_entrega.filter((e) => {
-        return equipo_id ? e.equipo_id === Number(equipo_id) : true;
-    });
 
     const handleRegresar = () => {
         navigate(-1);
@@ -70,36 +62,12 @@ export default function PaginaEntregas(): React.ReactElement {
                         <ArrowLeft className="w-4 h-4" />
                         <span>Regresar</span>
                     </button>
+
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
-
-                    <div className="relative flex-1 min-w-[240px] max-w-md">
-                        <input
-                            type="text"
-                            placeholder="Buscar en entregas..."
-                            value={busqueda}
-                            onChange={(e) => setBusqueda(e.target.value)}
-                            className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-                        />
-                    </div>
+                <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-end gap-3">
 
                     <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm cursor-pointer"
-                            title="Limpiar búsqueda"
-                        >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Limpiar</span>
-                        </button>
-
-                        <button
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm cursor-pointer"
-                        >
-                            <Search className="w-3.5 h-3.5" />
-                            <span>Buscar</span>
-                        </button>
-
                         <button
                             onClick={() => OpenModal(ModalLista.modal_entrega)}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors shadow-sm cursor-pointer"
@@ -131,8 +99,8 @@ export default function PaginaEntregas(): React.ReactElement {
                         </thead>
 
                         <tbody className="divide-y divide-gray-100">
-                        {entregasFiltradas.length > 0 ? (
-                            entregasFiltradas.map((item) => (
+                        {listar_entrega.length > 0 ? (
+                            listar_entrega.map((item) => (
                                 <tr key={item.entrega_id} className="hover:bg-gray-50/80 transition-colors text-xs">
 
                                     <td className="px-4 py-3.5 font-bold text-gray-900">
@@ -216,7 +184,7 @@ export default function PaginaEntregas(): React.ReactElement {
                 </div>
 
                 <div className="p-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between items-center bg-gray-50/30">
-                    <span>Total de entregas: {entregasFiltradas.length}</span>
+                    <span>Total de entregas: {listar_entrega.length}</span>
                 </div>
             </div>
         </div>

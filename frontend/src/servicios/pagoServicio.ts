@@ -14,12 +14,12 @@ export const pagoService = {
     },
 
     crearCuenta: async (payload: Cuenta) => {
-        const { data } = await api.post('/pago/actualizar', payload);
+        const { data } = await api.post('/pago/', payload);
         return data;
     },
 
     actualizarCuenta: async (payload: Cuenta) => {
-        const { data } = await api.put('/pago/actualizar', payload);
+        const { data } = await api.put('/pago/', payload);
         return data;
     },
 

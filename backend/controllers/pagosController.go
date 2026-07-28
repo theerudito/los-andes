@@ -23,7 +23,6 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 	)
 
 	id, err := strconv.Atoi(c.Params("id"))
-
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID de equipo inválido"})
 	}
@@ -35,7 +34,8 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
       e.codigo,
       c.costo_total,
       c.abono,
-      c.saldo
+      c.saldo,
+      e.tipo_equipo
     FROM cuentas_reparacion c
     INNER JOIN equipos e ON c.equipo_id = e.equipo_id
     WHERE c.equipo_id = ?`, id)
@@ -44,7 +44,6 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 		_ = helpers.InsertLogsError(conn, "pagos", "Error al ejecutar la consulta")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
-
 	defer rows.Close()
 
 	for rows.Next() {
@@ -55,15 +54,22 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 			&cuenta.EquipoCodigo,
 			&cuenta.CostoTotal,
 			&cuenta.Abono,
-			&cuenta.Saldo)
+			&cuenta.Saldo,
+			&cuenta.Equipo,
+		)
 
 		if err != nil {
 			_ = helpers.InsertLogsError(conn, "pagos", "Error al leer los registros")
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
 
-		cuentas = append(cuentas, cuenta)
+		if cuenta.CostoTotal > 0 && cuenta.Saldo <= 0 {
+			cuenta.Estado = "Pagado"
+		} else {
+			cuenta.Estado = "Pendiente"
+		}
 
+		cuentas = append(cuentas, cuenta)
 	}
 
 	if len(cuentas) == 0 {
@@ -71,7 +77,6 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(cuentas)
-
 }
 
 func ConsultarCuenta(c *fiber.Ctx) error {
@@ -80,10 +85,10 @@ func ConsultarCuenta(c *fiber.Ctx) error {
 		cuenta models.CuentasDTO
 		rows   *sql.Rows
 		err    error
+		found  bool
 	)
 
 	id, err := strconv.Atoi(c.Params("id"))
-
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID de cuenta inválido"})
 	}
@@ -95,7 +100,8 @@ func ConsultarCuenta(c *fiber.Ctx) error {
       e.codigo,
       c.costo_total,
       c.abono,
-      c.saldo
+      c.saldo,
+      e.tipo_equipo
     FROM cuentas_reparacion c
     INNER JOIN equipos e ON c.equipo_id = e.equipo_id
     WHERE c.cuenta_id = ?`, id)
@@ -104,7 +110,6 @@ func ConsultarCuenta(c *fiber.Ctx) error {
 		_ = helpers.InsertLogsError(conn, "pagos", "Error al ejecutar la consulta")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
-
 	defer rows.Close()
 
 	for rows.Next() {
@@ -114,22 +119,29 @@ func ConsultarCuenta(c *fiber.Ctx) error {
 			&cuenta.EquipoCodigo,
 			&cuenta.CostoTotal,
 			&cuenta.Abono,
-			&cuenta.Saldo)
+			&cuenta.Saldo,
+			&cuenta.Equipo,
+		)
 
 		if err != nil {
 			_ = helpers.InsertLogsError(conn, "pagos", "Error al leer los registros")
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al leer los registros"})
 		}
+
+		if cuenta.CostoTotal > 0 && cuenta.Saldo <= 0 {
+			cuenta.Estado = "Pagado"
+		} else {
+			cuenta.Estado = "Pendiente"
+		}
+
+		found = true
 	}
 
-	/*
-		if len(cuentas) == 0 {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
-		}
-	*/
+	if !found {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
+	}
 
 	return c.JSON(cuenta)
-
 }
 
 func ActualizarCuentaEquipo(c *fiber.Ctx) error {
@@ -140,27 +152,26 @@ func ActualizarCuentaEquipo(c *fiber.Ctx) error {
 		err                      error
 		estado                   int
 		costoActual, abonoActual float64
-		abonoFinal, costoFinal   float64
+		costoFinal, abonoFinal   float64
 		tx                       *sql.Tx
 	)
 
 	if err := c.BodyParser(&cuenta); err != nil {
-		_ = helpers.InsertLogsError(conn, "cuentas", "Cuerpo de solicitud inválido")
+		_ = helpers.InsertLogsError(conn, "cuentas", "Cuerpo de solicitud inválido: "+err.Error())
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
 	}
 
 	claims, err = helpers.ReadClaims(c)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "cuentas", "error al leer los clains "+err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+		_ = helpers.InsertLogsError(conn, "cuentas", "error al leer los claims "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los claims"})
 	}
 
 	if claims.Rol == "TECNICO" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "solo usuario administrador o vendedor puenden realizar esta accion"})
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Solo el usuario Administrador o Vendedor pueden realizar esta acción"})
 	}
 
 	err = conn.QueryRow(`SELECT estado_id FROM equipos WHERE equipo_id = ?`, cuenta.EquipoId).Scan(&estado)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "El equipo especificado no existe"})
@@ -187,54 +198,30 @@ func ActualizarCuentaEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error al leer el estado de la cuenta"})
 	}
 
-	/*
-		if costoActual == 0 && abonoActual == 0 {
+	if cuenta.Abono < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "El monto abonado no puede ser negativo."})
+	}
 
-			if cuenta.NuevoCosto <= 0 {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Debe definir un costo total inicial mayor a $0 para poder guardar la cuenta."})
-			}
+	if costoActual > 0 && cuenta.CostoTotal != costoActual && claims.Rol != "ADMINISTRADOR" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Permiso denegado. Solo el Administrador puede modificar un costo total ya establecido."})
+	}
 
-			if cuenta.MontoAAbonar > cuenta.NuevoCosto {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "El abono inicial no puede ser superior al costo total establecido."})
-			}
+	costoFinal = cuenta.CostoTotal
+	abonoFinal = cuenta.Abono
 
-			costoFinal = cuenta.NuevoCosto
-			abonoFinal = cuenta.MontoAAbonar
-
-		} else {
-
-			if cuenta.NuevoCosto != 0 && cuenta.NuevoCosto != costoActual {
-
-				if claims.Rol != "ADMINISTRADOR" {
-					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Permiso denegado. Solo el Administrador puede modificar el costo total una vez establecido."})
-				}
-
-				costoFinal = cuenta.NuevoCosto
-
-			} else {
-
-				costoFinal = costoActual
-
-			}
-
-			abonoFinal = abonoActual + cuenta.MontoAAbonar
-
-			if abonoFinal > costoFinal {
-				saldoRestante := costoFinal - abonoActual
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": fmt.Sprintf("El abono ingresado supera el saldo pendiente. Saldo restante: $%.2f", saldoRestante)})
-			}
-		} */
+	if abonoFinal > costoFinal && costoFinal > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": fmt.Sprintf("El abono no puede superar el costo total establecido ($%.2f).", costoFinal)})
+	}
 
 	tx, err = conn.Begin()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "cuentas", "error iniciando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error iniciando transacción"})
 	}
 
 	defer tx.Rollback()
 
-	_, err = conn.Exec(`
+	_, err = tx.Exec(`
 		UPDATE cuentas_reparacion 
 		SET costo_total = ?, 
 		    abono = ? 
@@ -249,21 +236,19 @@ func ActualizarCuentaEquipo(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error actualizando el registro"})
 	}
 
-	err = helpers.InsertLogs(tx, "UPDATE", "cuentas", claims.Name, "registro actualizando correctamente")
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "marcas", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
-	}
-
 	err = tx.Commit()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "cuentas", "error confirmando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error confirmando transacción"})
 	}
 
-	return c.Status(200).JSON(fiber.Map{"message": "registro actualizando correctamente"})
+	err = helpers.InsertLogs(conn, "UPDATE", "cuentas", claims.Name, "cuenta actualizada correctamente")
+	if err != nil {
+		_ = helpers.InsertLogsError(conn, "cuentas", "error insertando la auditoria "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
+	}
 
+	return c.Status(200).JSON(fiber.Map{"message": "cuenta actualizada correctamente"})
 }
 
 func ComprobantePago(c *fiber.Ctx) error {
@@ -348,10 +333,10 @@ func ComprobantePago(c *fiber.Ctx) error {
 	pdf.SetFont("Arial", "B", 16)
 	pdf.CellFormat(110, 7, "COMPROBANTE DE PAGO", "", 0, "L", false, 0, "")
 	pdf.SetFont("Arial", "B", 12)
-	pdf.CellFormat(70, 7, fmt.Sprintf("RECIBO N°: %06d", data.CuentaID), "1", 1, "C", false, 0, "")
+	pdf.CellFormat(70, 7, fmt.Sprintf("RECIBO #: %06d", data.CuentaID), "1", 1, "C", false, 0, "")
 
 	pdf.SetFont("Arial", "I", 9)
-	pdf.Cell(0, 5, "Sistema de Gestión de Mantenimiento de Computadoras")
+	pdf.Cell(0, 5, "Sistema de Gestion de Mantenimiento de Computadoras")
 	pdf.Ln(8)
 
 	pdf.Line(15, pdf.GetY(), 195, pdf.GetY())
@@ -366,9 +351,9 @@ func ComprobantePago(c *fiber.Ctx) error {
 	pdf.CellFormat(30, 6, "Cliente:", "L", 0, "L", false, 0, "")
 	pdf.CellFormat(150, 6, helpers.Limitar(nombreCliente, 60), "R", 1, "L", false, 0, "")
 
-	pdf.CellFormat(30, 6, "Identificación:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(30, 6, "Identificacion:", "L", 0, "L", false, 0, "")
 	pdf.CellFormat(60, 6, data.ClienteIdentificacion, "", 0, "L", false, 0, "")
-	pdf.CellFormat(25, 6, "Teléfono:", "", 0, "L", false, 0, "")
+	pdf.CellFormat(25, 6, "Telefono:", "", 0, "L", false, 0, "")
 	pdf.CellFormat(65, 6, data.ClienteTelefono, "R", 1, "L", false, 0, "")
 
 	pdf.CellFormat(30, 6, "Email:", "L,B", 0, "L", false, 0, "")
@@ -380,14 +365,14 @@ func ComprobantePago(c *fiber.Ctx) error {
 	pdf.CellFormat(180, 6, " 2. DATOS DEL EQUIPO EN SERVICIO", "1", 1, "L", true, 0, "")
 
 	pdf.SetFont("Arial", "", 9)
-	pdf.CellFormat(30, 6, "Código Equipo:", "L", 0, "L", false, 0, "")
+	pdf.CellFormat(30, 6, "Codigo Equipo:", "L", 0, "L", false, 0, "")
 	pdf.CellFormat(60, 6, data.EquipoCodigo, "", 0, "L", false, 0, "")
 	pdf.CellFormat(25, 6, "Tipo / Marca:", "", 0, "L", false, 0, "")
 	pdf.CellFormat(65, 6, fmt.Sprintf("%s - %s", data.TipoEquipo, data.Marca), "R", 1, "L", false, 0, "")
 
 	pdf.CellFormat(30, 6, "Modelo:", "L,B", 0, "L", false, 0, "")
 	pdf.CellFormat(60, 6, data.Modelo, "B", 0, "L", false, 0, "")
-	pdf.CellFormat(25, 6, "N° Serie:", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(25, 6, "# Serie:", "B", 0, "L", false, 0, "")
 	pdf.CellFormat(65, 6, data.NumeroSerie, "R,B", 1, "L", false, 0, "")
 
 	pdf.Ln(5)

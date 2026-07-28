@@ -68,10 +68,10 @@ export const usePagos = create<Data>((set, get) => ({
         set({ isLoading: true });
         try {
             const payload: Cuenta = {
-                abono: form_pagos.abono,
-                costo_total: form_pagos.costo_total,
-                cuenta_id: form_pagos.cuenta_id,
-                equipo_id: form_pagos.equipo_id
+                cuenta_id: Number(form_pagos.cuenta_id) || 0,
+                equipo_id: Number(get().equipo_id) || 0,
+                costo_total: Number(form_pagos.costo_total) || 0,
+                abono: Number(form_pagos.abono) || 0
             };
 
             if (isEditing) {

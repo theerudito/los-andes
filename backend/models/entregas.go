@@ -15,6 +15,7 @@ type EntregaDTO struct {
 }
 
 type Entrega struct {
+	EntregaId          int    `json:"entrega_id"`
 	EquipoId           int    `json:"equipo_id"`
 	TrabajosRealizados string `json:"trabajos_realizados"`
 	Observaciones      string `json:"observaciones"`

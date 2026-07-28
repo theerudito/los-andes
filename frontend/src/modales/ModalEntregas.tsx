@@ -140,20 +140,6 @@ export default function ModalEntregas(): React.ReactElement | null {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                            <MessageSquare size={14} className="text-amber-600" /> Observaciones Adicionales
-                        </label>
-                        <textarea
-                            value={form_entrega.observaciones}
-                            onChange={handleChangeTextArea}
-                            name="observaciones"
-                            rows={2}
-                            placeholder="Ej: LISTO Y RECIBIDO POR EL CLIENTE"
-                            className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 uppercase placeholder-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium resize-none shadow-sm"
-                        />
-                    </div>
-
                     <div className="pt-3 border-t border-slate-200/80 flex items-center justify-end gap-2 shrink-0">
                         <button
                             type="button"

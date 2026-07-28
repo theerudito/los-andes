@@ -7,7 +7,6 @@ const initialEntrega = (): Entrega => ({
     equipo_id: 0,
     entrega_id: 0,
     trabajos_realizados: "",
-    observaciones: "",
     estado_final_equipo: "",
     conformidad_cliente: 0,
 });
@@ -72,9 +71,8 @@ export const useEntregas = create<Data>((set, get) => ({
             const payload: Entrega = {
                 conformidad_cliente: form_entrega.conformidad_cliente,
                 entrega_id: form_entrega.entrega_id,
-                equipo_id: form_entrega.equipo_id,
+                equipo_id: get().equipo_id,
                 estado_final_equipo: form_entrega.estado_final_equipo,
-                observaciones: form_entrega.observaciones,
                 trabajos_realizados: form_entrega.trabajos_realizados
             };
 

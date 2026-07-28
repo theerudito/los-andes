@@ -321,14 +321,26 @@ func CrearEquipo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los claims"})
 	}
 
-	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE numero_serie = ?`, strings.ToUpper(equipo.NumeroSerie)).Scan(&exist)
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error ejecutando la consulta "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
-	}
+	serieLimpia := strings.TrimSpace(strings.ToUpper(equipo.NumeroSerie))
 
-	if exist > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "el registro ya existe"})
+	if serieLimpia != "" && serieLimpia != "S/N" && serieLimpia != "SIN SERIE" {
+		err = conn.QueryRow(`
+			SELECT COUNT(*) 
+			FROM equipos 
+			WHERE UPPER(numero_serie) = ? AND estado_id NOT IN (6, 7)`,
+			serieLimpia,
+		).Scan(&exist)
+
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "equipos", "error ejecutando la consulta: "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error ejecutando la consulta"})
+		}
+
+		if exist > 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "Este número de serie ya cuenta con una orden de reparación activa en el taller.",
+			})
+		}
 	}
 
 	tx, err = conn.Begin()
@@ -346,26 +358,26 @@ func CrearEquipo(c *fiber.Ctx) error {
 	}
 
 	res, err := tx.Exec(`
-    INSERT INTO equipos (
-      codigo,
-      tipo_equipo,
-      modelo,
-      numero_serie,
-      accesorios,
-      descripcion_problema,
-      observacion,
-      fecha_recepcion,
-      fecha_estimada_entrega,
-      fecha_creacion,
-      fecha_modificacion,
-      marca_id,
-      cliente_id,
-      estado_id                  
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO equipos (
+		  codigo,
+		  tipo_equipo,
+		  modelo,
+		  numero_serie,
+		  accesorios,
+		  descripcion_problema,
+		  observacion,
+		  fecha_recepcion,
+		  fecha_estimada_entrega,
+		  fecha_creacion,
+		  fecha_modificacion,
+		  marca_id,
+		  cliente_id,
+		  estado_id                  
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		codigo,
 		strings.ToUpper(equipo.TipoEquipo),
 		strings.ToUpper(equipo.Modelo),
-		strings.ToUpper(equipo.NumeroSerie),
+		serieLimpia,
 		strings.ToUpper(equipo.Accesorios),
 		strings.ToUpper(equipo.Descripcion),
 		strings.ToUpper(equipo.Observacion),
@@ -391,13 +403,13 @@ func CrearEquipo(c *fiber.Ctx) error {
 	EquipoId = int(lastID)
 
 	_, err = tx.Exec(`
-    INSERT INTO historial_reparaciones (
-      observaciones_tecnicas,
-      fecha,
-      usuario_id,
-      equipo_id,
-      estado_id
-    ) VALUES (?, ?, ?, ?, ?)`,
+		INSERT INTO historial_reparaciones (
+		  observaciones_tecnicas,
+		  fecha,
+		  usuario_id,
+		  equipo_id,
+		  estado_id
+		) VALUES (?, ?, ?, ?, ?)`,
 		"INGRESO INICIAL: "+strings.ToUpper(equipo.Descripcion),
 		helpers.FechaActual(),
 		claims.UserId,
@@ -411,11 +423,11 @@ func CrearEquipo(c *fiber.Ctx) error {
 	}
 
 	_, err = tx.Exec(`
-    INSERT INTO cuentas_reparacion (
-      costo_total,
-      abono,
-      equipo_id
-    ) VALUES (?, ?, ?)`,
+		INSERT INTO cuentas_reparacion (
+		  costo_total,
+		  abono,
+		  equipo_id
+		) VALUES (?, ?, ?)`,
 		0.00,
 		0.00,
 		EquipoId,
@@ -455,6 +467,7 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		equipo                 models.Equipos
 		tx                     *sql.Tx
 		claims                 *models.CustomClaims
+		exist                  int
 	)
 
 	if err = c.BodyParser(&equipo); err != nil {
@@ -464,8 +477,8 @@ func ModificarEquipo(c *fiber.Ctx) error {
 
 	claims, err = helpers.ReadClaims(c)
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error al leer los clains "+err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+		_ = helpers.InsertLogsError(conn, "equipos", "error al leer los claims "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los claims"})
 	}
 
 	err = conn.QueryRow(`SELECT equipo_id FROM equipos WHERE equipo_id = ?`, equipo.EquipoId).Scan(&EquipoId)
@@ -478,7 +491,6 @@ func ModificarEquipo(c *fiber.Ctx) error {
 	}
 
 	err = conn.QueryRow(`SELECT COUNT(*) FROM entregas WHERE equipo_id = ?`, equipo.EquipoId).Scan(&tieneEntrega)
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error verificando entrega "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al verificar el estado de entrega"})
@@ -490,33 +502,57 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		})
 	}
 
-	tx, err = conn.Begin()
+	serieLimpia := strings.TrimSpace(strings.ToUpper(equipo.NumeroSerie))
 
+	if serieLimpia != "" && serieLimpia != "S/N" && serieLimpia != "SIN SERIE" {
+		err = conn.QueryRow(`
+			SELECT COUNT(*) 
+			FROM equipos 
+			WHERE UPPER(numero_serie) = ? 
+			  AND equipo_id != ? 
+			  AND estado_id NOT IN (6, 7)`,
+			serieLimpia,
+			equipo.EquipoId,
+		).Scan(&exist)
+
+		if err != nil {
+			_ = helpers.InsertLogsError(conn, "equipos", "error verificando serie duplicada: "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error verificando número de serie"})
+		}
+
+		if exist > 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "Este número de serie ya pertenece a otra orden de reparación activa en el taller.",
+			})
+		}
+	}
+
+	tx, err = conn.Begin()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error iniciando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error iniciando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error iniciando transacción"})
 	}
 
 	defer tx.Rollback()
 
 	_, err = tx.Exec(`
-    UPDATE equipos 
-    SET tipo_equipo           = ?,
-      modelo                  = ?,
-      numero_serie            = ?,
-      accesorios              = ?,
-      descripcion_problema    = ?,
-      observacion             = ?,
-      fecha_recepcion         = ?,
-      fecha_estimada_entrega  = ?,
-      fecha_modificacion      = ?,
-      marca_id                = ?,
-      cliente_id              = ?
-    WHERE 
-      equipo_id               = ?`,
+		UPDATE equipos 
+		SET tipo_equipo            = ?,
+		    modelo                 = ?,
+		    numero_serie           = ?,
+		    accesorios             = ?,
+		    descripcion_problema   = ?,
+		    observacion            = ?,
+		    fecha_recepcion        = ?,
+		    fecha_estimada_entrega  = ?,
+		    fecha_modificacion     = ?,
+		    marca_id               = ?,
+		    cliente_id             = ?
+		WHERE 
+		    equipo_id              = ?`,
 		strings.ToUpper(equipo.TipoEquipo),
 		strings.ToUpper(equipo.Modelo),
-		strings.ToUpper(equipo.NumeroSerie),
+		serieLimpia,
 		strings.ToUpper(equipo.Accesorios),
 		strings.ToUpper(equipo.Descripcion),
 		strings.ToUpper(equipo.Observacion),
@@ -525,24 +561,24 @@ func ModificarEquipo(c *fiber.Ctx) error {
 		helpers.FechaActual(),
 		equipo.MarcaId,
 		equipo.ClienteId,
-		equipo.EquipoId)
+		equipo.EquipoId,
+	)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error actualizando el registro "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error actualizando el registro"})
+		return c.Status(500).JSON(fiber.Map{"message": "error actualizando el registro"})
 	}
 
 	err = tx.Commit()
-
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error confirmando transacción "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error confirmando transacción"})
+		return c.Status(500).JSON(fiber.Map{"message": "error confirmando transacción"})
 	}
 
 	err = helpers.InsertLogs(conn, "UPDATE", "equipos", claims.Name, "registro actualizado correctamente")
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
 	}
 
 	return c.Status(200).JSON(fiber.Map{"message": "registro actualizado correctamente"})

@@ -20,7 +20,6 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 		conn        = database.GetDB()
 		rows        *sql.Rows
 		err         error
-		exist       int
 		historiales []models.HistorialDTO
 		historial   models.HistorialDTO
 	)
@@ -28,16 +27,6 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "ID de equipo inválido"})
-	}
-
-	err = conn.QueryRow(`SELECT COUNT(*) FROM equipos WHERE equipo_id = ?`, id).Scan(&exist)
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "historial", "error verificando equipo "+err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error ejecutando la consulta"})
-	}
-
-	if exist == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "el equipo no existe"})
 	}
 
 	rows, err = conn.Query(`
@@ -97,9 +86,8 @@ func ConsultarHistorialEquipo(c *fiber.Ctx) error {
 
 	}
 
-	if err = rows.Err(); err != nil {
-		_ = helpers.InsertLogsError(conn, "historial", "error recorriendo filas "+err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error procesando los datos"})
+	if len(historiales) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
 	}
 
 	return c.Status(200).JSON(historiales)
@@ -110,7 +98,7 @@ func ConsultarHistorial(c *fiber.Ctx) error {
 		conn      = database.GetDB()
 		rows      *sql.Rows
 		err       error
-		exist     int = 0
+		exist     int
 		historial models.Historial
 	)
 
@@ -159,7 +147,7 @@ func ConsultarHistorial(c *fiber.Ctx) error {
 
 	}
 
-	if exist <= 0 {
+	if exist == 0 {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
 	}
 

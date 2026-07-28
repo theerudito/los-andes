@@ -143,7 +143,9 @@ export const useClientes = create<Data>((set, get) => ({
         try {
             await clienteService.reporteClientePdf(req);
         } catch (error: any) {
-            toast.error(error?.message);
+            const mensajeError = error?.response?.data?.error || "Error al procesar el reporte";
+
+            toast.error(mensajeError);
         }
     },
 

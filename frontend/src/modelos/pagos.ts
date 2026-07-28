@@ -5,6 +5,7 @@ export interface CuentaDTO {
     costo_total: number;
     abono: number;
     saldo: number;
+    estado: string
 }
 
 export interface Cuenta {

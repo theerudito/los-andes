@@ -3,7 +3,6 @@ import {
     Trash2,
     Save,
     X,
-    EraserIcon,
     Tag
 } from "lucide-react";
 
@@ -11,7 +10,6 @@ import { useModal } from "../store/useModal.ts";
 import { ModalLista } from "../helpers/ModalLista.ts";
 import {useMarcas} from "../store/useMarcas.ts";
 import React, {useEffect} from "react";
-import {useUsuarios} from "../store/useUsuarios.ts";
 
 export default function ModalMarcas() {
     const { modalName, CloseModal } = useModal((state) => state);
@@ -47,6 +45,7 @@ export default function ModalMarcas() {
         })
     }
 
+
     if (modalName !== ModalLista.modal_marca) return null;
 
     return (
@@ -79,13 +78,6 @@ export default function ModalMarcas() {
                         />
 
                         <div className="flex shrink-0 border-l border-slate-200">
-                            <button
-                                type="button"
-                                className="cursor-pointer bg-orange-600 text-white hover:orange-700 px-3.5 flex items-center justify-center transition-all border-r border-orange-200/60 active:scale-95"
-                                title="Limpiar"
-                            >
-                                <EraserIcon size={16} />
-                            </button>
 
                             <button
                                 onClick={EnviarMarca}

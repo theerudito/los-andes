@@ -69,7 +69,7 @@ CREATE TABLE
     codigo TEXT UNIQUE NOT NULL,
     tipo_equipo TEXT NOT NULL,
     modelo TEXT,
-    numero_serie TEXT UNIQUE,
+    numero_serie TEXT,
     accesorios TEXT,
     descripcion_problema TEXT NOT NULL,
     observacion TEXT,

@@ -138,8 +138,10 @@ export const useEquipos = create<Data>((set, get) => ({
     DescargarPdf: async (req: RPT_Equipos) => {
         try {
             await equipoService.descargarReporteEquiposPdf(req);
-        } catch (error) {
-            console.error("Error al descargar reporte en PDF:", error);
+        } catch (error: any) {
+            const mensajeError = error?.response?.data?.error || "Error al procesar el reporte";
+
+            toast.error(mensajeError);
         }
     },
 
