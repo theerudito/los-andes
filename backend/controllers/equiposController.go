@@ -117,8 +117,8 @@ func ObtenerEquipo(c *fiber.Ctx) error {
 			COALESCE(e.accesorios, '') AS accesorios,
 			COALESCE(e.descripcion_problema, '') AS descripcion_problema,
 			COALESCE(e.observacion, '') AS observacion,
-			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_recepcion), '') AS fecha_recepcion,
-			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_estimada_entrega), '') AS fecha_estimada_entrega,
+			e.fecha_recepcion,
+			e.fecha_estimada_entrega,
 			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_creacion), '') AS fecha_creacion,
 			COALESCE(strftime('%d/%m/%Y %H:%M:%S', e.fecha_modificacion), '') AS fecha_modificacion,
 			COALESCE(m.marca_id, 0) AS marca_id,
@@ -126,6 +126,7 @@ func ObtenerEquipo(c *fiber.Ctx) error {
 			COALESCE(c.cliente_id, 0) AS cliente_id,
 			COALESCE(c.nombres, '') AS nombres,
 			COALESCE(c.apellidos, '') AS apellidos,
+			COALESCE(c.identificacion, '') AS identificacion,
 			COALESCE(r.estado_id, 0) AS estado_id,
 			COALESCE(r.nombre, '') AS r_nombre
 		FROM 
@@ -162,6 +163,7 @@ func ObtenerEquipo(c *fiber.Ctx) error {
 			&equipo.ClienteId,
 			&equipo.Nombres,
 			&equipo.Apellidos,
+			&equipo.Identificacion,
 			&equipo.EstadoId,
 			&equipo.Estado)
 

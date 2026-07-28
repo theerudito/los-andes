@@ -17,6 +17,8 @@ import {ModalLista} from "../../helpers/ModalLista.ts";
 import {useEquipos} from "../../store/useEquipos.ts";
 import type {RPT_Equipos} from "../../modelos/equipos.ts";
 import ModalMarcas from "../../modales/ModalMarcas.tsx";
+import ReactDatePicker from "react-datepicker";
+import {formatearFecha} from "../../helpers/formatearFecha.ts";
 
 export default function PaginaEquipos(): React.ReactElement {
     const OpenModal = useModal((state) => state.OpenModal);
@@ -29,8 +31,8 @@ export default function PaginaEquipos(): React.ReactElement {
     const navigate = useNavigate();
     const [busqueda, setBusqueda] = useState<string>('');
 
-    const [fechaDesde, setFechaDesde] = useState<string>('2026-07-01');
-    const [fechaHasta, setFechaHasta] = useState<string>('2026-07-21');
+    const [fechaDesde, setFechaDesde] = useState<Date | null>(new Date());
+    const [fechaHasta, setFechaHasta] = useState<Date | null>(new Date());
 
     const equiposFiltrados = listar_equipos.filter((e) =>
         e.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -61,11 +63,58 @@ export default function PaginaEquipos(): React.ReactElement {
 
     function VerReporte() {
         const obj: RPT_Equipos = {
-            fecha_desde: fechaDesde,
-            fecha_hasta: fechaHasta
+            fecha_desde: formatearFecha(fechaDesde),
+            fecha_hasta: formatearFecha(fechaHasta)
         };
         DescargarPdf(obj);
     }
+
+    const handleRangoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const opcion = e.target.value;
+        const hoy = new Date();
+
+        switch (opcion) {
+            case "hoy":
+                setFechaDesde(hoy);
+                setFechaHasta(hoy);
+                break;
+
+            case "mes_actual": {
+                const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+                const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+                setFechaDesde(primerDia);
+                setFechaHasta(ultimoDia);
+                break;
+            }
+
+            case "mes_anterior": {
+                const primerDia = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+                const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+                setFechaDesde(primerDia);
+                setFechaHasta(ultimoDia);
+                break;
+            }
+
+            case "anio_actual": {
+                const primerDia = new Date(hoy.getFullYear(), 0, 1);
+                const ultimoDia = new Date(hoy.getFullYear(), 11, 31);
+                setFechaDesde(primerDia);
+                setFechaHasta(ultimoDia);
+                break;
+            }
+
+            case "anio_anterior": {
+                const primerDia = new Date(hoy.getFullYear() - 1, 0, 1);
+                const ultimoDia = new Date(hoy.getFullYear() - 1, 11, 31);
+                setFechaDesde(primerDia);
+                setFechaHasta(ultimoDia);
+                break;
+            }
+
+            default:
+                break;
+        }
+    };
 
     const getBadgeEstado = (estado: string) => {
         switch (estado.toLowerCase()) {
@@ -136,40 +185,67 @@ export default function PaginaEquipos(): React.ReactElement {
 
                         <div className="flex items-center gap-2">
                             <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                                <Calendar className="w-3.5 h-3.5 text-gray-400" /> Desde:
+                                <Filter className="w-3.5 h-3.5 text-gray-400" /> Período:
                             </label>
-                            <input
-                                type="date"
-                                value={fechaDesde}
-                                onChange={(e) => setFechaDesde(e.target.value)}
-                                className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500"
-                            />
+                            <select
+                                defaultValue=""
+                                onChange={handleRangoChange}
+                                className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
+                            >
+                                <option value="" disabled>Seleccionar filtro...</option>
+                                <option value="hoy">Hoy</option>
+                                <option value="mes_actual">Mes actual</option>
+                                <option value="mes_anterior">Mes anterior</option>
+                                <option value="anio_actual">Año actual</option>
+                                <option value="anio_anterior">Año anterior</option>
+                            </select>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                                <Calendar className="w-3.5 h-3.5 text-gray-400" /> Hasta:
-                            </label>
-                            <input
-                                type="date"
-                                value={fechaHasta}
-                                onChange={(e) => setFechaHasta(e.target.value)}
-                                className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500"
-                            />
+                        <div className="w-[1px] h-6 bg-gray-200 hidden sm:block"/>
+
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> Desde:
+                                </label>
+                                <ReactDatePicker
+                                    selected={fechaDesde}
+                                    onChange={(date: Date | null) => setFechaDesde(date)}
+                                    dateFormat="dd/MM/yyyy"
+                                    locale="es"
+                                    popperClassName="!z-[9999]"
+                                    className="w-28 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-mono font-medium focus:outline-none focus:ring-0 focus:border-emerald-500 cursor-pointer"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> Hasta:
+                                </label>
+                                <ReactDatePicker
+                                    selected={fechaHasta}
+                                    onChange={(date: Date | null) => setFechaHasta(date)}
+                                    dateFormat="dd/MM/yyyy"
+                                    locale="es"
+                                    popperClassName="!z-[9999]"
+                                    className="w-28 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-mono font-medium focus:outline-none focus:ring-0 focus:border-emerald-500 cursor-pointer"
+                                />
+                            </div>
                         </div>
 
-                        <div className="w-[1px] h-6 bg-gray-200 hidden sm:block" />
+                        <div className="w-[1px] h-6 bg-gray-200 hidden sm:block"/>
 
                         <button
                             onClick={VerReporte}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm"
-                            title="Exportar Reporte de Equipos a PDF"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"
+                            title="Exportar a PDF"
                         >
-                            <FileText className="w-4 h-4" />
+                            <FileText className="w-4 h-4"/>
                             <span>Generar Reporte PDF</span>
                         </button>
 
                     </div>
+
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
@@ -295,7 +371,6 @@ export default function PaginaEquipos(): React.ReactElement {
                         </table>
                     </div>
 
-                    {/* Pie de Tabla */}
                     <div className="p-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between items-center bg-gray-50/30">
                         <span>Total de registros: {equiposFiltrados.length}</span>
                     </div>

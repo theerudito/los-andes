@@ -42,9 +42,10 @@ type EquiposDTO struct {
 	EstadoId int    `json:"estado_id"`
 	Estado   string `json:"estado"`
 
-	ClienteId int    `json:"cliente_id"`
-	Nombres   string `json:"nombres"`
-	Apellidos string `json:"apellidos"`
+	ClienteId      int    `json:"cliente_id"`
+	Nombres        string `json:"nombres"`
+	Apellidos      string `json:"apellidos"`
+	Identificacion string `json:"identificacion"`
 }
 
 type ReqReportesEquipos struct {

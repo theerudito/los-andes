@@ -24,7 +24,7 @@ type Data = {
     isLoading: boolean;
     ObtenerClientes: () => Promise<void>;
     ObtenerCliente: (id?: number) => Promise<void>;
-    ObtenerClientePorIdentifiacion: (identificacion: string) => Promise<void>;
+    ObtenerClientePorIdentifiacion: (identificacion: string) => Promise<boolean>;
     EnviarCliente: () => Promise<void>;
     EliminarCliente: (id: number) => Promise<void>;
     DescargarPdf: (req: RPT_Clientes) => Promise<void>;
@@ -57,23 +57,29 @@ export const useClientes = create<Data>((set, get) => ({
         try {
             const data = await clienteService.getClienteByIdentificacion(identificacion);
 
-            const cliente = {
-                cliente_id: data.cliente_id,
-                identificacion: data.identificacion,
-                tipo_identificacion: data.tipo_identificacion,
-                nombres: data.nombres,
-                apellidos: data.apellidos,
-                telefono: data.telefono,
-                email: data.email,
-                direccion: data.direccion,
-                fecha_creacion: data.fecha_creacion,
-                fecha_modificacion: data.fecha_modificacion,
-            };
+            if (data && data.cliente_id) {
+                const cliente = {
+                    cliente_id: data.cliente_id,
+                    identificacion: data.identificacion,
+                    tipo_identificacion: data.tipo_identificacion,
+                    nombres: data.nombres,
+                    apellidos: data.apellidos,
+                    telefono: data.telefono,
+                    email: data.email,
+                    direccion: data.direccion,
+                    fecha_creacion: data.fecha_creacion,
+                    fecha_modificacion: data.fecha_modificacion,
+                };
 
-            set({ form_cliente: cliente, clienteId : data.cliente_id});
+                set({ form_cliente: cliente, clienteId: data.cliente_id });
+                return true;
+            }
 
-        } catch (error : any) {
-            toast.error(error?.message);
+            set({ clienteId: 0 });
+            return false;
+        } catch (error) {
+            set({ clienteId: 0 });
+            return false;
         }
     },
 

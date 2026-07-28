@@ -11,14 +11,16 @@ import {useModal} from "../../store/useModal.ts";
 import {ModalLista} from "../../helpers/ModalLista.ts";
 import {useClientes} from "../../store/useClientes.ts";
 import type {RPT_Clientes} from "../../modelos/clientes.ts";
+import ReactDatePicker  from "react-datepicker";
+import {formatearFecha} from "../../helpers/formatearFecha.ts";
 
 export default function PaginaClientes(): React.ReactElement {
     const {OpenModal} = useModal((state) => state);
     const {ObtenerClientes, listar_clientes, EliminarCliente, ObtenerCliente, DescargarPdf} = useClientes((state) => state);
 
     const [busqueda, setBusqueda] = useState<string>('');
-    const [fechaDesde, setFechaDesde] = useState<string>('2026-07-01');
-    const [fechaHasta, setFechaHasta] = useState<string>('2026-07-16');
+    const [fechaDesde, setFechaDesde] = useState<Date | null>(new Date());
+    const [fechaHasta, setFechaHasta] = useState<Date | null>(new Date());
 
     useEffect(() => {
         ObtenerClientes();
@@ -31,8 +33,8 @@ export default function PaginaClientes(): React.ReactElement {
 
     function VerReporte() {
         const obj: RPT_Clientes = {
-            fecha_desde: fechaDesde,
-            fecha_hasta: fechaHasta
+            fecha_desde: formatearFecha(fechaDesde),
+            fecha_hasta: formatearFecha(fechaHasta)
         };
         DescargarPdf(obj);
     }
@@ -43,6 +45,53 @@ export default function PaginaClientes(): React.ReactElement {
         u.identificacion.includes(busqueda) ||
         u.email.toLowerCase().includes(busqueda.toLowerCase())
     );
+
+    const handleRangoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const opcion = e.target.value;
+        const hoy = new Date();
+
+        switch (opcion) {
+            case "hoy":
+                setFechaDesde(hoy);
+                setFechaHasta(hoy);
+                break;
+
+            case "mes_actual": {
+                const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+                const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+                setFechaDesde(primerDia);
+                setFechaHasta(ultimoDia);
+                break;
+            }
+
+            case "mes_anterior": {
+                const primerDia = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+                const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+                setFechaDesde(primerDia);
+                setFechaHasta(ultimoDia);
+                break;
+            }
+
+            case "anio_actual": {
+                const primerDia = new Date(hoy.getFullYear(), 0, 1);
+                const ultimoDia = new Date(hoy.getFullYear(), 11, 31);
+                setFechaDesde(primerDia);
+                setFechaHasta(ultimoDia);
+                break;
+            }
+
+            case "anio_anterior": {
+                const primerDia = new Date(hoy.getFullYear() - 1, 0, 1);
+                const ultimoDia = new Date(hoy.getFullYear() - 1, 11, 31);
+                setFechaDesde(primerDia);
+                setFechaHasta(ultimoDia);
+                break;
+            }
+
+            default:
+                break;
+        }
+    };
 
     return (
         <div className="space-y-6 w-full">
@@ -90,29 +139,56 @@ export default function PaginaClientes(): React.ReactElement {
 
                     <div className="flex items-center gap-2">
                         <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400"/> Desde:
+                            <Filter className="w-3.5 h-3.5 text-gray-400" /> Período:
                         </label>
-                        <input
-                            type="date"
-                            value={fechaDesde}
-                            onChange={(e) => setFechaDesde(e.target.value)}
-                            className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400"/> Hasta:
-                        </label>
-                        <input
-                            type="date"
-                            value={fechaHasta}
-                            onChange={(e) => setFechaHasta(e.target.value)}
-                            className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500"
-                        />
+                        <select
+                            defaultValue=""
+                            onChange={handleRangoChange}
+                            className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
+                        >
+                            <option value="" disabled>Seleccionar filtro...</option>
+                            <option value="hoy">Hoy</option>
+                            <option value="mes_actual">Mes actual</option>
+                            <option value="mes_anterior">Mes anterior</option>
+                            <option value="anio_actual">Año actual</option>
+                            <option value="anio_anterior">Año anterior</option>
+                        </select>
                     </div>
 
                     <div className="w-[1px] h-6 bg-gray-200 hidden sm:block"/>
+
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400" /> Desde:
+                            </label>
+                            <ReactDatePicker
+                                selected={fechaDesde}
+                                onChange={(date: Date | null) => setFechaDesde(date)}
+                                dateFormat="dd/MM/yyyy"
+                                locale="es"
+                                popperClassName="!z-[9999]"
+                                className="w-28 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-mono font-medium focus:outline-none focus:ring-0 focus:border-emerald-500 cursor-pointer"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400" /> Hasta:
+                            </label>
+                            <ReactDatePicker
+                                selected={fechaHasta}
+                                onChange={(date: Date | null) => setFechaHasta(date)}
+                                dateFormat="dd/MM/yyyy"
+                                locale="es"
+                                popperClassName="!z-[9999]"
+                                className="w-28 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-mono font-medium focus:outline-none focus:ring-0 focus:border-emerald-500 cursor-pointer"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="w-[1px] h-6 bg-gray-200 hidden sm:block"/>
+
                     <button
                         onClick={VerReporte}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"

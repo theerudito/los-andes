@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
     X,
     Save,
@@ -19,12 +19,42 @@ import { useEquipos } from "../store/useEquipos.ts";
 import { useMarcas } from "../store/useMarcas.ts";
 import { useClientes } from "../store/useClientes.ts";
 import { toast } from "sonner";
+import ReactDatePicker from "react-datepicker";
 
 export default function ModalEquipos(): React.ReactElement | null {
     const { modalName, CloseModal, OpenModal } = useModal((state) => state);
     const { form_equipo, EnviarEquipo } = useEquipos((state) => state);
     const { ObtenerMarcas, listar_marca } = useMarcas((state) => state);
     const { form_cliente, ObtenerClientePorIdentifiacion, clienteId } = useClientes((state) => state);
+
+    const formatDateToDbStr = (date: Date | null): string => {
+        if (!date) return '';
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const year = date.getFullYear();
+        const month = pad(date.getMonth() + 1);
+        const day = pad(date.getDate());
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+        const seconds = pad(date.getSeconds());
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+
+    const parseStringToDate = (dateStr?: string): Date => {
+        if (!dateStr) return new Date();
+        const normalized = dateStr.replace(' ', 'T');
+        const date = new Date(normalized);
+        return isNaN(date.getTime()) ? new Date() : date;
+    };
+
+    const handleDateChange = (campo: 'fecha_recepcion' | 'fecha_estimada_entrega', date: Date | null) => {
+        const formattedDate = formatDateToDbStr(date || new Date());
+        useEquipos.setState((state) => ({
+            form_equipo: {
+                ...state.form_equipo,
+                [campo]: formattedDate,
+            },
+        }));
+    };
 
     const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -67,9 +97,9 @@ export default function ModalEquipos(): React.ReactElement | null {
         }));
     };
 
-    function LimpiarIdentificacion () {
-        useEquipos.setState({
-            form_equipo:{
+    function LimpiarIdentificacion() {
+        useClientes.setState({
+            form_cliente: {
                 cliente_id: 0,
                 identificacion: "",
                 tipo_identificacion: "",
@@ -80,26 +110,24 @@ export default function ModalEquipos(): React.ReactElement | null {
                 direccion: "",
                 fecha_creacion: "",
                 fecha_modificacion: "",
-            }
+            },
+            clienteId: 0,
+            isEditing: false,
         });
+
+        useEquipos.setState((state) => ({
+            form_equipo: {
+                ...state.form_equipo,
+                cliente_id: 0,
+                identificacion: "",
+                nombres: "",
+                apellidos: "",
+            }
+        }));
     }
 
     function Clear() {
         CloseModal();
-        useEquipos.setState({
-            form_equipo:{
-                cliente_id: 0,
-                identificacion: "",
-                tipo_identificacion: "",
-                nombres: "",
-                apellidos: "",
-                telefono: "",
-                email: "",
-                direccion: "",
-                fecha_creacion: "",
-                fecha_modificacion: "",
-            }
-        });
         useEquipos.setState({
             form_equipo: {
                 equipo_id: 0,
@@ -121,17 +149,36 @@ export default function ModalEquipos(): React.ReactElement | null {
             },
             isEditing: false,
         });
+        LimpiarIdentificacion();
     }
 
-    async function ObeterCliente() {
+    function AbrirModalCliente() {
+        OpenModal(ModalLista.modal_cliente);
+    }
+
+    async function ObtenerCliente() {
         if (!form_equipo.identificacion?.trim()) {
             toast.error("Ingrese un número de cédula o RUC");
-            return null;
+            return;
         }
+
         await ObtenerClientePorIdentifiacion(form_equipo.identificacion);
 
-        if (clienteId > 0) {
-            toast.success(clienteId);
+        const clienteActual = useClientes.getState().form_cliente;
+        const idClienteActual = useClientes.getState().clienteId;
+
+        if (idClienteActual > 0 && clienteActual) {
+            useEquipos.setState((state) => ({
+                form_equipo: {
+                    ...state.form_equipo,
+                    cliente_id: clienteActual.cliente_id,
+                    identificacion: clienteActual.identificacion,
+                    nombres: clienteActual.nombres,
+                    apellidos: clienteActual.apellidos,
+                }
+            }));
+
+            toast.success("Cliente cargado correctamente");
         } else {
             toast.error("No se encontró ningún cliente registrado con esa identificación");
         }
@@ -140,7 +187,9 @@ export default function ModalEquipos(): React.ReactElement | null {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (clienteId <= 0) {
+        const currentClienteId = useClientes.getState().clienteId || form_equipo.cliente_id;
+
+        if (!currentClienteId || currentClienteId <= 0) {
             toast.error("Debe buscar y seleccionar un cliente válido antes de guardar");
             return;
         }
@@ -189,8 +238,19 @@ export default function ModalEquipos(): React.ReactElement | null {
     };
 
     useEffect(() => {
-        ObtenerMarcas();
-    }, []);
+        if (modalName === ModalLista.modal_equipo) {
+            ObtenerMarcas();
+
+            const hoyStr = formatDateToDbStr(new Date());
+            useEquipos.setState((state) => ({
+                form_equipo: {
+                    ...state.form_equipo,
+                    fecha_recepcion: state.form_equipo.fecha_recepcion || hoyStr,
+                    fecha_estimada_entrega: state.form_equipo.fecha_estimada_entrega || hoyStr,
+                }
+            }));
+        }
+    }, [modalName]);
 
     if (modalName !== ModalLista.modal_equipo) return null;
 
@@ -207,7 +267,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                     </div>
                     <button
                         type="button"
-                        className="cursor-pointer hover:bg-white/20 transition-all rounded-full p-1.5 active:scale-95"
+                        className="cursor-pointer hover:bg-white/20 transition-all rounded-full p-1.5 active:scale-95 focus:outline-none"
                         onClick={Clear}
                     >
                         <X size={18} />
@@ -229,20 +289,20 @@ export default function ModalEquipos(): React.ReactElement | null {
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault();
-                                            ObeterCliente();
+                                            ObtenerCliente();
                                         }
                                     }}
                                     type="text"
                                     name="identificacion"
                                     maxLength={13}
                                     placeholder="1721457494001"
-                                    className="flex-1 min-w-0 px-3 text-xs text-slate-800 outline-none font-mono font-bold tracking-wider uppercase h-full"
+                                    className="flex-1 min-w-0 px-3 text-xs text-slate-800 outline-none font-mono font-bold tracking-wider uppercase h-full focus:outline-none"
                                 />
 
                                 <button
-                                    onClick={() => OpenModal(ModalLista.modal_cliente)}
+                                    onClick={AbrirModalCliente}
                                     type="button"
-                                    className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0"
+                                    className="cursor-pointer bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0 focus:outline-none"
                                     title="Registrar Nuevo Cliente"
                                 >
                                     <Plus size={15} />
@@ -251,16 +311,16 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <button
                                     onClick={LimpiarIdentificacion}
                                     type="button"
-                                    className="cursor-pointer bg-orange-600 hover:bg-orange-700 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0"
+                                    className="cursor-pointer bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0 focus:outline-none"
                                     title="Limpiar datos de cliente"
                                 >
                                     <EraserIcon size={15} />
                                 </button>
 
                                 <button
-                                    onClick={ObeterCliente}
+                                    onClick={ObtenerCliente}
                                     type="button"
-                                    className="cursor-pointer bg-slate-800 hover:bg-slate-900 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0"
+                                    className="cursor-pointer bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0 focus:outline-none"
                                     title="Buscar Cliente por Cédula / RUC"
                                 >
                                     <Search size={15} />
@@ -286,7 +346,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                     onChange={handleChangeSelect}
                                     name="marca_id"
                                     value={form_equipo.marca_id || 0}
-                                    className="flex-1 min-w-0 px-3 text-xs text-slate-800 outline-none font-semibold uppercase bg-white cursor-pointer h-full"
+                                    className="flex-1 min-w-0 px-3 text-xs text-slate-800 outline-none font-semibold uppercase bg-white cursor-pointer h-full focus:outline-none"
                                 >
                                     <option value={0} disabled>SELECCIONE UNA MARCA</option>
                                     {
@@ -301,7 +361,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <button
                                     onClick={() => OpenModal(ModalLista.modal_marca)}
                                     type="button"
-                                    className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0"
+                                    className="cursor-pointer bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-3 flex items-center justify-center transition-all active:scale-95 h-full shrink-0 focus:outline-none"
                                     title="Agregar Nueva Marca"
                                 >
                                     <Plus size={15} />
@@ -314,7 +374,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <Laptop size={14} className="text-blue-600" /> Tipo Equipo
                             </label>
                             <input
-                                value={form_equipo.tipo_equipo}
+                                value={form_equipo.tipo_equipo || ''}
                                 onChange={handleChangeInput}
                                 type="text"
                                 name="tipo_equipo"
@@ -330,7 +390,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <Package size={14} className="text-blue-600" /> Modelo
                             </label>
                             <input
-                                value={form_equipo.modelo}
+                                value={form_equipo.modelo || ''}
                                 onChange={handleChangeInput}
                                 type="text"
                                 name="modelo"
@@ -344,7 +404,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <FileText size={14} className="text-blue-600" /> Número de Serie
                             </label>
                             <input
-                                value={form_equipo.numero_serie}
+                                value={form_equipo.numero_serie || ''}
                                 onChange={handleChangeInput}
                                 type="text"
                                 name="numero_serie"
@@ -359,7 +419,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                             <Package size={14} className="text-blue-600" /> Accesorios Dejados
                         </label>
                         <input
-                            value={form_equipo.accesorios}
+                            value={form_equipo.accesorios || ''}
                             onChange={handleChangeInput}
                             type="text"
                             name="accesorios"
@@ -374,7 +434,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <Wrench size={14} className="text-blue-600" /> Descripción del Problema
                             </label>
                             <textarea
-                                value={form_equipo.descripcion_problema}
+                                value={form_equipo.descripcion_problema || ''}
                                 onChange={handleChangeTextArea}
                                 name="descripcion_problema"
                                 rows={2}
@@ -388,7 +448,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 <FileText size={14} className="text-blue-600" /> Observaciones Adicionales
                             </label>
                             <textarea
-                                value={form_equipo.observacion}
+                                value={form_equipo.observacion || ''}
                                 onChange={handleChangeTextArea}
                                 name="observacion"
                                 rows={2}
@@ -403,12 +463,17 @@ export default function ModalEquipos(): React.ReactElement | null {
                             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                                 <Calendar size={14} className="text-blue-600" /> Fecha Recepción
                             </label>
-                            <input
-                                value={form_equipo.fecha_recepcion}
-                                onChange={handleChangeInput}
-                                type="datetime-local"
-                                name="fecha_recepcion"
-                                className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium shadow-sm"
+                            <ReactDatePicker
+                                selected={parseStringToDate(form_equipo.fecha_recepcion)}
+                                onChange={(date: Date | null) => handleDateChange('fecha_recepcion', date)}
+                                showTimeSelect
+                                timeIntervals={15}
+                                timeCaption="Hora"
+                                dateFormat="dd/MM/yyyy HH:mm"
+                                locale="es"
+                                wrapperClassName="w-full"
+                                popperClassName="!z-[9999]"
+                                className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm cursor-pointer"
                             />
                         </div>
 
@@ -416,12 +481,17 @@ export default function ModalEquipos(): React.ReactElement | null {
                             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                                 <Calendar size={14} className="text-blue-600" /> Fecha Estimada Entrega
                             </label>
-                            <input
-                                value={form_equipo.fecha_estimada_entrega}
-                                onChange={handleChangeInput}
-                                type="datetime-local"
-                                name="fecha_estimada_entrega"
-                                className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium shadow-sm"
+                            <ReactDatePicker
+                                selected={parseStringToDate(form_equipo.fecha_estimada_entrega)}
+                                onChange={(date: Date | null) => handleDateChange('fecha_estimada_entrega', date)}
+                                showTimeSelect
+                                timeIntervals={15}
+                                timeCaption="Hora"
+                                dateFormat="dd/MM/yyyy HH:mm"
+                                locale="es"
+                                wrapperClassName="w-full"
+                                popperClassName="!z-[9999]"
+                                className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm cursor-pointer"
                             />
                         </div>
                     </div>
@@ -430,14 +500,14 @@ export default function ModalEquipos(): React.ReactElement | null {
                         <button
                             type="button"
                             onClick={Clear}
-                            className="cursor-pointer px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-lg transition-all active:scale-95"
+                            className="cursor-pointer px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-200 hover:bg-slate-300 active:bg-slate-400 rounded-lg transition-all active:scale-95 focus:outline-none focus:ring-0"
                         >
                             Cancelar
                         </button>
 
                         <button
                             type="submit"
-                            className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all active:scale-95"
+                            className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 rounded-lg shadow-sm transition-all active:scale-95 focus:outline-none focus:ring-0"
                         >
                             <Save size={15} />
                             <span>Guardar Equipo</span>

@@ -28,3 +28,7 @@ body {
     scrollbar-width: thin;
     scrollbar-color: silver;
 }
+
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
