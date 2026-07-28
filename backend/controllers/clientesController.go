@@ -463,7 +463,7 @@ func ReporteCliente(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&req); err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "El contenido del json es incorrecto: "+err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "El contenido de la solicitud es incorrecto"})
 	}
 
 	rows, err = conn.Query(`
@@ -481,16 +481,16 @@ func ReporteCliente(c *fiber.Ctx) error {
 		FROM 
 			clientes AS c
 		WHERE 
-		     DATE (c.fecha_creacion) BETWEEN ? AND ?
+			DATE(c.fecha_creacion) BETWEEN ? AND ?
 		ORDER BY 
-			c.nombres ASC   
-			`, req.Fecha_Desde, req.Fecha_Hasta)
+			c.nombres ASC`,
+		req.Fecha_Desde, req.Fecha_Hasta,
+	)
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "clientes", "Error al ejecutar la consulta: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error al ejecutar la consulta"})
 	}
-
 	defer rows.Close()
 
 	for rows.Next() {
@@ -514,46 +514,45 @@ func ReporteCliente(c *fiber.Ctx) error {
 		}
 
 		clientes = append(clientes, cliente)
-
 	}
 
 	if len(clientes) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros en el rango seleccionado"})
 	}
 
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(10, 10, 10)
+
+	tr := pdf.UnicodeTranslatorFromDescriptor("cp1252")
+
 	pdf.AddPage()
 
 	pdf.SetFont("Arial", "B", 16)
-	pdf.Cell(0, 6, "REPORTE GENERAL DE CLIENTES")
+	pdf.Cell(0, 6, tr("REPORTE GENERAL DE CLIENTES"))
 	pdf.Ln(6)
 
 	pdf.SetFont("Arial", "I", 9)
-	pdf.Cell(0, 5, "Sistema de Gestion de Mantenimiento de Computadoras")
+	pdf.Cell(0, 5, tr("Sistema de Gestión de Mantenimiento de Computadoras"))
 	pdf.Ln(10)
 
 	pdf.Line(10, pdf.GetY(), 200, pdf.GetY())
-	pdf.Ln(1)
+	pdf.Ln(2)
 
 	pdf.SetFont("Arial", "B", 10)
-
-	pdf.CellFormat(65, 6, "Nombre Completo", "B", 0, "L", false, 0, "")
-	pdf.CellFormat(35, 6, "Identificacion", "B", 0, "L", false, 0, "")
-	pdf.CellFormat(30, 6, "Telefono", "B", 0, "L", false, 0, "")
-	pdf.CellFormat(60, 6, "Email", "B", 0, "L", false, 0, "")
+	pdf.CellFormat(65, 6, tr("Nombre Completo"), "B", 0, "L", false, 0, "")
+	pdf.CellFormat(35, 6, tr("Identificación"), "B", 0, "L", false, 0, "")
+	pdf.CellFormat(30, 6, tr("Teléfono"), "B", 0, "L", false, 0, "")
+	pdf.CellFormat(60, 6, tr("Email"), "B", 0, "L", false, 0, "")
 	pdf.Ln(7)
 
 	pdf.SetFont("Arial", "", 9)
-
 	for _, cli := range clientes {
 		nombreCompleto := fmt.Sprintf("%s %s", cli.Nombres, cli.Apellidos)
-		identificacion := fmt.Sprintf("%s", cli.Identificacion)
 
-		pdf.CellFormat(65, 6, helpers.Limitar(nombreCompleto, 32), "", 0, "L", false, 0, "")
-		pdf.CellFormat(35, 6, identificacion, "", 0, "L", false, 0, "")
-		pdf.CellFormat(30, 6, cli.Telefono, "", 0, "L", false, 0, "")
-		pdf.CellFormat(60, 6, helpers.Limitar(cli.Email, 30), "", 0, "L", false, 0, "")
+		pdf.CellFormat(65, 6, tr(helpers.Limitar(nombreCompleto, 32)), "", 0, "L", false, 0, "")
+		pdf.CellFormat(35, 6, tr(cli.Identificacion), "", 0, "L", false, 0, "")
+		pdf.CellFormat(30, 6, tr(cli.Telefono), "", 0, "L", false, 0, "")
+		pdf.CellFormat(60, 6, tr(helpers.Limitar(cli.Email, 30)), "", 0, "L", false, 0, "")
 		pdf.Ln(6)
 	}
 
