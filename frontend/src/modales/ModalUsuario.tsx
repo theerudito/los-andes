@@ -15,7 +15,6 @@ import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
 import {useUsuarios} from "../store/useUsuarios.ts";
 import {ObtenerToken} from "../helpers/jwtDedoce.ts";
-import {useClientes} from "../store/useClientes.ts";
 
 export default function ModalUsuario(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);

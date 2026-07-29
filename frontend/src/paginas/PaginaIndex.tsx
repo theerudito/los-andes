@@ -1,46 +1,74 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Laptop,
     Users,
     CheckCircle2,
     AlertTriangle,
     ShieldCheck,
-    TrendingUp
+    TrendingUp,
+    Loader2
 } from 'lucide-react';
+import api from "../helpers/fetching/axios.ts";
+
+interface DashboardData {
+    equipos: number;
+    entregas: number;
+    clientes: number;
+    errors: number;
+}
 
 export default function PaginaIndex(): React.ReactElement {
+    const [data, setData] = useState<DashboardData | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+
+    useEffect(() => {
+
+       async function  Obtener () {
+            try {
+                setLoading(true);
+                const response = await api.get('/dashboard/');
+                setData(response.data);
+            } catch (err: any) {
+                console.error("Error al cargar el dashboard:", err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        Obtener();
+    }, []);
+
     const estadisticas = [
         {
-            titulo: "Equipos en Taller",
-            valor: "24",
-            cambio: "+12% esta semana",
+            titulo: "Equipos",
+            valor: data ? data.equipos : "0",
+            cambio: "Registrados en sistema",
             icono: Laptop,
             colorIcono: "text-blue-600",
             bgIcono: "bg-blue-50",
             border: "border-blue-100",
         },
         {
-            titulo: "Entregados Hoy",
-            valor: "8",
-            cambio: "3 pendientes",
+            titulo: "Entregas",
+            valor: data ? data.entregas : "0",
+            cambio: "Registrados en sistema",
             icono: CheckCircle2,
             colorIcono: "text-emerald-600",
             bgIcono: "bg-emerald-50",
             border: "border-emerald-100",
         },
         {
-            titulo: "Clientes Activos",
-            valor: "142",
-            cambio: "+5 nuevos este mes",
+            titulo: "Clientes",
+            valor: data ? data.clientes: "0",
+            cambio: "Registrados en sistema",
             icono: Users,
             colorIcono: "text-indigo-600",
             bgIcono: "bg-indigo-50",
             border: "border-indigo-100",
         },
         {
-            titulo: "Alertas / Errores",
-            valor: "2",
-            cambio: "Atención requerida",
+            titulo: "Errores",
+            valor: data ? data.errors : "0",
+            cambio: "Registrados en sistema",
             icono: AlertTriangle,
             colorIcono: "text-amber-600",
             bgIcono: "bg-amber-50",
@@ -50,7 +78,6 @@ export default function PaginaIndex(): React.ReactElement {
 
     return (
         <div className="space-y-6 w-full">
-
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 p-6 sm:p-8 text-white shadow-lg">
                 <div className="relative z-10 space-y-2 max-w-xl">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-medium text-blue-200 backdrop-blur-md border border-white/10">
@@ -84,7 +111,13 @@ export default function PaginaIndex(): React.ReactElement {
                                 </div>
                             </div>
                             <div className="mt-4">
-                                <h3 className="text-2xl font-bold text-gray-800 tracking-tight">{item.valor}</h3>
+                                <h3 className="text-2xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
+                                    {loading ? (
+                                        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                                    ) : (
+                                        item.valor
+                                    )}
+                                </h3>
                                 <p className="text-[11px] font-medium text-gray-400 mt-1 flex items-center gap-1">
                                     <TrendingUp className="w-3 h-3 text-emerald-500" />
                                     {item.cambio}
@@ -94,7 +127,6 @@ export default function PaginaIndex(): React.ReactElement {
                     );
                 })}
             </div>
-
         </div>
     );
 }

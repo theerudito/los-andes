@@ -353,10 +353,32 @@ func CrearEquipo(c *fiber.Ctx) error {
 
 	defer tx.Rollback()
 
-	codigo, err = helpers.ObtenerCodigo(tx, "O")
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error obteniendo el codigo "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error obteniendo el codigo"})
+	for {
+		codigo, err = helpers.ObtenerCodigo(tx, "O")
+		if err != nil {
+			_ = tx.Rollback()
+			_ = helpers.InsertLogsError(conn, "equipos", "error obteniendo el codigo "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error obteniendo el codigo"})
+		}
+
+		var count int
+		err = tx.QueryRow(`SELECT COUNT(*) FROM equipos WHERE codigo = ?`, codigo).Scan(&count)
+		if err != nil {
+			_ = tx.Rollback()
+			_ = helpers.InsertLogsError(conn, "equipos", "error verificando código correlativo "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error verificando el código generado"})
+		}
+
+		if count == 0 {
+			break
+		}
+
+		err = helpers.ActualizarCodigo(tx, "O")
+		if err != nil {
+			_ = tx.Rollback()
+			_ = helpers.InsertLogsError(conn, "equipos", "error incrementando secuencial "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error al ajustar el secuencial"})
+		}
 	}
 
 	res, err := tx.Exec(`
@@ -393,12 +415,14 @@ func CrearEquipo(c *fiber.Ctx) error {
 	)
 
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "equipos", "error insertando el registro "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error insertando el registro: " + err.Error()})
 	}
 
 	lastID, err := res.LastInsertId()
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "equipos", "error obteniendo el id insertado "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error obteniendo el id insertado"})
 	}
@@ -420,6 +444,7 @@ func CrearEquipo(c *fiber.Ctx) error {
 	)
 
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "equipos", "error insertando historial inicial "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error registrando historial de ingreso"})
 	}
@@ -436,26 +461,29 @@ func CrearEquipo(c *fiber.Ctx) error {
 	)
 
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "equipos", "error inicializando cuenta "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error inicializando cuenta de cobro"})
 	}
 
 	err = helpers.ActualizarCodigo(tx, "O")
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "equipos", "error actualizando el codigo "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error actualizando el codigo"})
+	}
+
+	err = helpers.InsertLogs(tx, "INSERT", "equipos", claims.Name, "registro creado correctamente")
+	if err != nil {
+		_ = tx.Rollback()
+		_ = helpers.InsertLogsError(conn, "equipos", "error insertando la auditoria "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "equipos", "error confirmando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error confirmando transacción"})
-	}
-
-	err = helpers.InsertLogs(conn, "INSERT", "equipos", claims.Name, "registro creado correctamente")
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "equipos", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
 	}
 
 	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente"})

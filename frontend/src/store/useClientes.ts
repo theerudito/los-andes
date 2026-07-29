@@ -25,7 +25,7 @@ type Data = {
     ObtenerClientes: () => Promise<void>;
     ObtenerCliente: (id?: number) => Promise<void>;
     ObtenerClientePorIdentifiacion: (identificacion: string) => Promise<boolean>;
-    EnviarCliente: () => Promise<void>;
+    EnviarCliente: () => Promise<Cliente | null>;
     EliminarCliente: (id: number) => Promise<void>;
     DescargarPdf: (req: RPT_Clientes) => Promise<void>;
     reset: () => void;
@@ -115,21 +115,37 @@ export const useClientes = create<Data>((set, get) => ({
                 tipo_identificacion: form_cliente.tipo_identificacion
             };
 
+            let clienteProcesado: Cliente;
+
             if (isEditing) {
-                const data =  await clienteService.modificarCliente(payload);
-                toast.success(data.message);
+                const res = await clienteService.modificarCliente(payload);
+                toast.success(res.message || "Cliente actualizado correctamente");
+
+                clienteProcesado = {
+                    ...payload,
+                    cliente_id: res.cliente_id || payload.cliente_id
+                };
             } else {
-                const data = await clienteService.crearCliente(payload);
-                toast.success(data.message);
+                const res = await clienteService.crearCliente(payload);
+                toast.success(res.message || "Cliente creado correctamente");
+
+                clienteProcesado = {
+                    ...payload,
+                    cliente_id: res.cliente_id
+                };
             }
 
-            reset();
+            set({ clienteId: clienteProcesado.cliente_id, isLoading: false });
 
+            reset();
             await ObtenerClientes();
 
+            return clienteProcesado;
+
         } catch (error: any) {
-            toast.error(error?.message);
+            toast.error(error?.response?.data?.message || error?.message || "Error al procesar cliente");
             set({ isLoading: false });
+            return null;
         }
     },
 

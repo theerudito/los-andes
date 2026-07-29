@@ -8,7 +8,7 @@ const initialEntrega = (): Entrega => ({
     entrega_id: 0,
     trabajos_realizados: "",
     estado_final_equipo: "",
-    conformidad_cliente: 0,
+    conformidad_cliente: 1,
 });
 
 type Data = {

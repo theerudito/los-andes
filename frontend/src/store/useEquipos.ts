@@ -34,7 +34,7 @@ type Data = {
     EnviarEquipo: () => Promise<void>;
     EliminarEquipo: (id: number) => Promise<void>;
     DescargarPdf: (req: RPT_Equipos) => Promise<void>;
-    DescargarOrdenPdf: (id:Number) => Promise<void>;
+    DescargarOrdenPdf: (id:number) => Promise<void>;
     reset: () => void;
 };
 
@@ -145,7 +145,7 @@ export const useEquipos = create<Data>((set, get) => ({
         }
     },
 
-    DescargarOrdenPdf: async (id: Number) => {
+    DescargarOrdenPdf: async (id: number) => {
         try {
             await equipoService.descargarOrdenIngresoPdf(id);
         } catch (error) {
@@ -155,7 +155,7 @@ export const useEquipos = create<Data>((set, get) => ({
 
     reset: () =>
         set({
-            initialEquipo: initialEquipo(),
+            form_equipo: initialEquipo(),
             isEditing: false,
             isLoading: false,
         }),

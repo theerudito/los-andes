@@ -174,12 +174,12 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 	claims, err = helpers.ReadClaims(c)
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "entregas", "error al leer los clains "+err.Error())
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
+		_ = helpers.InsertLogsError(conn, "entregas", "error al leer los claims "+err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los claims"})
 	}
 
 	if claims.Rol == "TECNICO" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "solo usuario administrador o venderor puenden realizar esta accion"})
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "solo usuario administrador o vendedor pueden realizar esta acción"})
 	}
 
 	err = conn.QueryRow(`SELECT COUNT(*) FROM entregas WHERE equipo_id = ?`, entrega.EquipoId).Scan(&existe)
@@ -236,11 +236,34 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 
 	fechaActual := helpers.FechaActual()
 
-	comprobanteNro, err := helpers.ObtenerCodigo(conn, "E")
+	var comprobanteNro string
 
-	if err != nil {
-		_ = helpers.InsertLogsError(conn, "entregas", "error obteniendo secuencial "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error generando número de comprobante"})
+	for {
+		comprobanteNro, err = helpers.ObtenerCodigo(tx, "E")
+		if err != nil {
+			_ = tx.Rollback()
+			_ = helpers.InsertLogsError(conn, "entregas", "error obteniendo secuencial "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error generando número de comprobante"})
+		}
+
+		var count int
+		err = tx.QueryRow(`SELECT COUNT(*) FROM entregas WHERE comprobante_nro = ?`, comprobanteNro).Scan(&count)
+		if err != nil {
+			_ = tx.Rollback()
+			_ = helpers.InsertLogsError(conn, "entregas", "error verificando correlativo "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error verificando el secuencial generado"})
+		}
+
+		if count == 0 {
+			break
+		}
+
+		err = helpers.ActualizarCodigo(tx, "E")
+		if err != nil {
+			_ = tx.Rollback()
+			_ = helpers.InsertLogsError(conn, "entregas", "error incrementando secuencial "+err.Error())
+			return c.Status(500).JSON(fiber.Map{"message": "error al ajustar el secuencial"})
+		}
 	}
 
 	_, err = tx.Exec(`
@@ -265,7 +288,7 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 	if err != nil {
 		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "entregas", "error insertando entrega "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error al registrar el acta de entrega"})
+		return c.Status(500).JSON(fiber.Map{"message": "error al registrar el acta de entrega: " + err.Error()})
 	}
 
 	_, err = tx.Exec(`
@@ -303,20 +326,26 @@ func RegistrarEntrega(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"message": "error al registrar el hito de cierre"})
 	}
 
+	err = helpers.ActualizarCodigo(tx, "E")
+	if err != nil {
+		_ = tx.Rollback()
+		_ = helpers.InsertLogsError(conn, "entregas", "error actualizando secuencial 'E' "+err.Error())
+		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar el secuencial"})
+	}
+
 	err = helpers.InsertLogs(tx, "INSERT", "entregas", claims.Name, "registro creado correctamente")
 	if err != nil {
+		_ = tx.Rollback()
 		_ = helpers.InsertLogsError(conn, "entregas", "error insertando la auditoria "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
+		return c.Status(500).JSON(fiber.Map{"message": "error insertando la auditoria"})
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		_ = helpers.InsertLogsError(conn, "entregas", "error confirming transacción "+err.Error())
+		_ = helpers.InsertLogsError(conn, "entregas", "error confirmando transacción "+err.Error())
 		return c.Status(500).JSON(fiber.Map{"message": "error al confirmar la entrega"})
 	}
-
-	_ = helpers.ActualizarCodigo(conn, "O")
 
 	return c.Status(201).JSON(fiber.Map{"message": "registro creado correctamente"})
 }
@@ -378,7 +407,7 @@ func ModificarEntrega(c *fiber.Ctx) error {
 
 	if err != nil {
 		_ = helpers.InsertLogsError(conn, "entregas", "error actualizando entrega "+err.Error())
-		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar el acta de entrega"})
+		return c.Status(500).JSON(fiber.Map{"message": "error al actualizar el acta de entrega: " + err.Error()})
 	}
 
 	err = helpers.InsertLogs(tx, "UPDATE", "entregas", claims.Name, "registro actualizado correctamente")

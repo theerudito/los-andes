@@ -7,7 +7,6 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/phpdave11/gofpdf v1.4.3
-	github.com/xuri/excelize/v2 v2.11.0
 	modernc.org/sqlite v1.53.0
 )
 

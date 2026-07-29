@@ -1,9 +1,7 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect} from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Pencil,
-    Search,
-    RotateCcw,
     Wrench,
     FileText,
     ArrowLeft,
@@ -28,12 +26,6 @@ export default function PaginaHistorial(): React.ReactElement {
         ObtenerHistoriales();
     }, [equipo_id]);
 
-    const [busqueda, setBusqueda] = useState<string>('');
-
-    const historialFiltrado = listar_historial.filter((h) => {
-        return equipo_id ? h.equipo_id === Number(equipo_id) : true;
-    });
-
     const handleRegresar = () => {
         navigate(-1);
     };
@@ -42,12 +34,6 @@ export default function PaginaHistorial(): React.ReactElement {
         await ObtenerHistorial(historialId)
         OpenModal(ModalLista.modal_historial)
     }
-
-    const handleLimpiarBusqueda = () => setBusqueda('');
-
-    const handleBuscar = () => {
-        console.log("Ejecutando búsqueda en historial para equipo_id:", equipo_id, "con filtro:", busqueda);
-    };
 
     const getBadgeEstado = (estado: string) => {
         switch (estado.toLowerCase()) {
@@ -87,35 +73,9 @@ export default function PaginaHistorial(): React.ReactElement {
                     </button>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
-
-                    <div className="relative flex-1 min-w-[240px] max-w-md">
-                        <input
-                            type="text"
-                            placeholder="Buscar en el historial..."
-                            value={busqueda}
-                            onChange={(e) => setBusqueda(e.target.value)}
-                            className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                        />
-                    </div>
+                <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-end gap-3">
 
                     <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            onClick={handleLimpiarBusqueda}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors shadow-sm cursor-pointer"
-                            title="Limpiar búsqueda"
-                        >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Limpiar</span>
-                        </button>
-
-                        <button
-                            onClick={handleBuscar}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm cursor-pointer"
-                        >
-                            <Search className="w-3.5 h-3.5" />
-                            <span>Buscar</span>
-                        </button>
 
 
                         <button
@@ -156,8 +116,8 @@ export default function PaginaHistorial(): React.ReactElement {
                         </thead>
 
                         <tbody className="divide-y divide-gray-100">
-                        {historialFiltrado.length > 0 ? (
-                            historialFiltrado.map((item) => (
+                        {listar_historial.length > 0 ? (
+                            listar_historial.map((item) => (
                                 <tr key={item.historial_id} className="hover:bg-gray-50/80 transition-colors text-xs">
                                     <td className="px-4 py-3.5 font-bold text-gray-900">
                                         #{item.historial_id}
@@ -215,7 +175,7 @@ export default function PaginaHistorial(): React.ReactElement {
                 </div>
 
                 <div className="p-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between items-center bg-gray-50/30">
-                    <span>Total de registros: {historialFiltrado.length}</span>
+                    <span>Total de registros: {listar_historial.length}</span>
                 </div>
             </div>
         </div>

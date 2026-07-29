@@ -5,7 +5,6 @@ import {
     Laptop,
     FileText,
     CheckCircle2,
-    MessageSquare,
     Wrench
 } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
@@ -15,14 +14,14 @@ import React from "react";
 
 export default function ModalEntregas(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
-    const { form_entrega, EnviarEntrega, equipo_id } = useEntregas((state) => state);
+    const { form_entrega, EnviarEntrega, equipo_id, reset } = useEntregas((state) => state);
 
     const handleChangeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
         useEntregas.setState((state) => ({
             form_entrega: {
                 ...state.form_entrega,
-                [name]: Number(value)
+                [name]: Number(value),
             },
         }));
     };
@@ -41,17 +40,7 @@ export default function ModalEntregas(): React.ReactElement | null {
 
     function Clear(){
         CloseModal()
-        useEntregas.setState({
-            form_entrega: {
-                equipo_id: 0,
-                entrega_id: 0,
-                trabajos_realizados: "",
-                observaciones: "",
-                estado_final_equipo: "",
-                conformidad_cliente: 0,
-            },
-            isEditing: false,
-        })
+        reset()
     }
 
     if (modalName !== ModalLista.modal_entrega) return null;
@@ -98,14 +87,15 @@ export default function ModalEntregas(): React.ReactElement | null {
                                 <CheckCircle2 size={14} className="text-amber-600" /> Conformidad Cliente
                             </label>
                             <select
-                                value={form_entrega.conformidad_cliente}
+                                value={form_entrega.conformidad_cliente ?? 1}
                                 onChange={handleChangeSelect}
                                 name="conformidad_cliente"
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-semibold uppercase cursor-pointer shadow-sm"
                             >
-                                <option value={1}>CONFORME</option>
-                                <option value={0}>NO CONFORME</option>
+                                <option value="" disabled>SELECCIONE CONFORMIDAD</option>
+                                <option value="1">CONFORME</option>
+                                <option value="0">NO CONFORME</option>
                             </select>
                         </div>
                     </div>

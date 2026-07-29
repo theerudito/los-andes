@@ -1,15 +1,16 @@
-import React, {useEffect} from 'react';
+import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Pencil,
     ArrowLeft,
     CreditCard,
     CheckCircle2,
-    Clock, PrinterCheck
+    Clock,
+    PrinterCheck
 } from 'lucide-react';
 import { useModal } from '../../store/useModal.ts';
 import { ModalLista } from '../../helpers/ModalLista.ts';
-import {usePagos} from "../../store/usePagos.ts";
+import { usePagos } from "../../store/usePagos.ts";
 
 export default function PaginaPagos(): React.ReactElement {
     const { OpenModal } = useModal((state) => state);
@@ -26,7 +27,6 @@ export default function PaginaPagos(): React.ReactElement {
         ObtenerPagos();
     }, [equipo_id]);
 
-
     const totalCosto = listar_pagos.reduce((acc, c) => acc + c.costo_total, 0);
     const totalAbonos = listar_pagos.reduce((acc, c) => acc + c.abono, 0);
     const totalSaldo = listar_pagos.reduce((acc, c) => acc + c.saldo, 0);
@@ -35,9 +35,9 @@ export default function PaginaPagos(): React.ReactElement {
         navigate(-1);
     };
 
-    async function VerPago(pagoId: number){
-        await ObtenerPago(pagoId)
-        OpenModal(ModalLista.modal_pago)
+    async function VerPago(pagoId: number) {
+        await ObtenerPago(pagoId);
+        OpenModal(ModalLista.modal_pago);
     }
 
     return (
@@ -65,7 +65,6 @@ export default function PaginaPagos(): React.ReactElement {
                         <span>Regresar</span>
                     </button>
                 </div>
-
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
@@ -93,8 +92,9 @@ export default function PaginaPagos(): React.ReactElement {
                                         #{item.cuenta_id}
                                     </td>
 
+                                    {/* 🛠️ FIX: Reemplazado item.equipo e item.codigo por item.equipo_codigo */}
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
-                                        {item.equipo} ORDEN: {item.codigo}
+                                        ORDEN: {item.equipo_codigo}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 text-right whitespace-nowrap">
@@ -112,14 +112,14 @@ export default function PaginaPagos(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                         {item.estado === "Pendiente" ? (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-full">
-                                    <Clock className="w-3 h-3" />
-                                    Pendiente
-                                    </span>
+                                                    <Clock className="w-3 h-3" />
+                                                    Pendiente
+                                                </span>
                                         ) : (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    Pagado
-                                    </span>
+                                                    <CheckCircle2 className="w-3 h-3" />
+                                                    Pagado
+                                                </span>
                                         )}
                                     </td>
 
@@ -145,7 +145,6 @@ export default function PaginaPagos(): React.ReactElement {
                                                     <Pencil className="w-4 h-4" />
                                                 </button>
                                             )}
-
 
                                         </div>
                                     </td>

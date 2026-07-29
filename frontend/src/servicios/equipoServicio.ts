@@ -1,5 +1,5 @@
 import api from "../helpers/fetching/axios.ts";
-import type {Equipo} from "../modelos/equipos.ts";
+import type {Equipo, RPT_Equipos} from "../modelos/equipos.ts";
 
 export const equipoService = {
     getEquipos: async () => {
@@ -36,7 +36,7 @@ export const equipoService = {
         link.click();
         link.remove();
     },
-    descargarReporteEquiposPdf: async (payload: Record<string, unknown>) => {
+    descargarReporteEquiposPdf: async (payload: RPT_Equipos) => {
         const response = await api.post('/equipo/reportes', payload, { responseType: 'blob' });
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');

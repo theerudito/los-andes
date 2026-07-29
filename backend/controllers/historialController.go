@@ -411,6 +411,9 @@ func ReporteHistorial(c *fiber.Ctx) error {
 	)
 
 	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil || id <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID de equipo inválido"})
+	}
 
 	rows, err = conn.Query(`
 		SELECT
@@ -439,7 +442,6 @@ func ReporteHistorial(c *fiber.Ctx) error {
 		_ = helpers.InsertLogsError(conn, "historial", "error al obtener el historial "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "error al obtener el historial"})
 	}
-
 	defer rows.Close()
 
 	for rows.Next() {
@@ -471,29 +473,30 @@ func ReporteHistorial(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
 	}
 
-	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf := gofpdf.New("L", "mm", "A4", "")
 	pdf.SetMargins(10, 10, 10)
 	pdf.AddPage()
 
+	tr := pdf.UnicodeTranslatorFromDescriptor("")
+
 	pdf.SetFont("Arial", "B", 16)
-	pdf.Cell(0, 6, "REPORTE GENERAL DE HISTORIAL")
+	pdf.Cell(0, 6, tr("REPORTE GENERAL DE HISTORIAL DE MANTENIMIENTO"))
 	pdf.Ln(6)
 
 	pdf.SetFont("Arial", "I", 9)
-	pdf.Cell(0, 5, "Sistema de Gestion de Mantenimiento de Computadoras")
-	pdf.Ln(10)
+	pdf.Cell(0, 5, tr("Sistema de Gestión de Mantenimiento de Computadoras"))
+	pdf.Ln(8)
 
-	pdf.Line(10, pdf.GetY(), 200, pdf.GetY())
-	pdf.Ln(1)
+	pdf.Line(10, pdf.GetY(), 287, pdf.GetY())
+	pdf.Ln(2)
 
 	pdf.SetFont("Arial", "B", 10)
-
-	pdf.CellFormat(32, 6, "Fecha / Hora", "B", 0, "L", false, 0, "")
-	pdf.CellFormat(40, 6, "Cliente", "B", 0, "L", false, 0, "")
-	pdf.CellFormat(30, 6, "Equipo", "B", 0, "L", false, 0, "")
-	pdf.CellFormat(28, 6, "Estado", "B", 0, "L", false, 0, "")
-	pdf.CellFormat(60, 6, "Observaciones / Tecnico", "B", 0, "L", false, 0, "")
-	pdf.Ln(7)
+	pdf.CellFormat(38, 7, tr("Fecha / Hora"), "B", 0, "L", false, 0, "")
+	pdf.CellFormat(55, 7, tr("Cliente"), "B", 0, "L", false, 0, "")
+	pdf.CellFormat(40, 7, tr("Equipo / Serie"), "B", 0, "L", false, 0, "")
+	pdf.CellFormat(34, 7, tr("Estado"), "B", 0, "L", false, 0, "")
+	pdf.CellFormat(110, 7, tr("Observaciones / Técnico"), "B", 0, "L", false, 0, "")
+	pdf.Ln(8)
 
 	pdf.SetFont("Arial", "", 9)
 
@@ -504,16 +507,18 @@ func ReporteHistorial(c *fiber.Ctx) error {
 			tecnico = "Sistema"
 		}
 
-		obsTecnico := fmt.Sprintf("%s (Tec: %s)", item.ObservacionesTecnicas, tecnico)
-		if item.ObservacionesTecnicas == "" {
-			obsTecnico = fmt.Sprintf("Sin obs. (Tec: %s)", tecnico)
+		equipoInfo := fmt.Sprintf("%s (%s)", item.Equipo, item.Serie)
+
+		obsTecnico := fmt.Sprintf("%s (Téc: %s)", item.ObservacionesTecnicas, tecnico)
+		if strings.TrimSpace(item.ObservacionesTecnicas) == "" {
+			obsTecnico = fmt.Sprintf("Sin observaciones. (Téc: %s)", tecnico)
 		}
 
-		pdf.CellFormat(32, 6, item.Fecha, "", 0, "L", false, 0, "")
-		pdf.CellFormat(40, 6, helpers.Limitar(cliente, 22), "", 0, "L", false, 0, "")
-		pdf.CellFormat(30, 6, helpers.Limitar(item.Equipo, 16), "", 0, "L", false, 0, "")
-		pdf.CellFormat(28, 6, helpers.Limitar(item.Estado, 15), "", 0, "L", false, 0, "")
-		pdf.CellFormat(60, 6, helpers.Limitar(obsTecnico, 35), "", 0, "L", false, 0, "")
+		pdf.CellFormat(38, 6, tr(item.Fecha), "", 0, "L", false, 0, "")
+		pdf.CellFormat(55, 6, tr(helpers.Limitar(cliente, 32)), "", 0, "L", false, 0, "")
+		pdf.CellFormat(40, 6, tr(helpers.Limitar(equipoInfo, 24)), "", 0, "L", false, 0, "")
+		pdf.CellFormat(34, 6, tr(helpers.Limitar(item.Estado, 18)), "", 0, "L", false, 0, "")
+		pdf.CellFormat(110, 6, tr(helpers.Limitar(obsTecnico, 75)), "", 0, "L", false, 0, "")
 		pdf.Ln(6)
 	}
 

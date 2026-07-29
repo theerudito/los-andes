@@ -105,4 +105,8 @@ func SetupRoutes(app *fiber.App) {
 	protectedLogsOK := v1.Group("/logs-ok", helpers.JWTMiddleware())
 	protectedLogsOK.Post("/", controllers.ObtenerLogsOk)
 
+	// dashboard
+	protectedDashBoard := v1.Group("/dashboard", helpers.JWTMiddleware())
+	protectedDashBoard.Get("/", controllers.ObtenerDashboard)
+
 }

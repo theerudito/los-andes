@@ -2,26 +2,22 @@ import React from "react";
 import { X, Save, User, CreditCard, Phone, Mail, MapPin } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
-import {useClientes} from "../store/useClientes.ts";
+import { useClientes } from "../store/useClientes.ts";
+import { useEquipos } from "../store/useEquipos.ts";
 
 export default function ModalCliente(): React.ReactElement | null {
-    const { modalName, CloseModal } = useModal((state) => state);
-
-    const { form_cliente, EnviarCliente } = useClientes((state) => state);
+    const { modalName, CloseModal, OpenModal } = useModal((state) => state);
+    const { form_cliente, EnviarCliente, reset } = useClientes((state) => state);
 
     const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const {name} = e.target;
+        const { name, value } = e.target;
 
-        const value = e.target.value;
-
-        useClientes.setState((state) => {
-            return {
-                form_cliente: {
-                    ...state.form_cliente,
-                    [name]: value
-                },
-            };
-        });
+        useClientes.setState((state) => ({
+            form_cliente: {
+                ...state.form_cliente,
+                [name]: value
+            },
+        }));
     };
 
     const handleChangeTextArea = (
@@ -36,30 +32,56 @@ export default function ModalCliente(): React.ReactElement | null {
         }));
     };
 
-    function Clear(){
-        CloseModal()
-        useClientes.setState({
-            form_cliente: {
-                cliente_id: 0,
-                identificacion: "",
-                tipo_identificacion: "",
-                nombres: "",
-                apellidos: "",
-                telefono: "",
-                email: "",
-                direccion: "",
-                fecha_creacion: "",
-                fecha_modificacion: "",
-            },
-            isEditing: false,
-        })
+    function Clear() {
+        useEquipos.setState((state) => ({
+            form_equipo: {
+                ...state.form_equipo,
+                desdeEquipo: false
+            }
+        }));
+        CloseModal();
+        reset();
     }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const clienteGuardado = await EnviarCliente();
+
+        if (clienteGuardado && (clienteGuardado.cliente_id > 0 || clienteGuardado.cliente_id > 0)) {
+            const idCliente = clienteGuardado.cliente_id || clienteGuardado.cliente_id;
+
+            const equipoState = useEquipos.getState().form_equipo as any;
+            const vieneDesdeEquipo = Boolean(equipoState?.desdeEquipo);
+
+            if (vieneDesdeEquipo) {
+                useEquipos.setState((state: any) => ({
+                    form_equipo: {
+                        ...state.form_equipo,
+                        cliente_id: idCliente,
+                        identificacion: clienteGuardado.identificacion,
+                        nombres: clienteGuardado.nombres,
+                        apellidos: clienteGuardado.apellidos,
+                        desdeEquipo: false // Reseteamos la marca
+                    }
+                }));
+
+                useClientes.setState({ clienteId: idCliente });
+
+                CloseModal();
+                reset();
+                OpenModal(ModalLista.modal_equipo);
+            } else {
+                Clear();
+            }
+        }
+    };
 
     if (modalName !== ModalLista.modal_cliente) return null;
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
-            <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <form onSubmit={handleSubmit} className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
 
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-4 flex justify-between items-center shrink-0 shadow-sm">
                     <div className="flex items-center gap-2">
@@ -77,14 +99,14 @@ export default function ModalCliente(): React.ReactElement | null {
                     </button>
                 </div>
 
-                <div  className="p-5 bg-slate-50/50 flex flex-col gap-4">
+                <div className="p-5 bg-slate-50/50 flex flex-col gap-4">
 
                     <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                             <CreditCard size={14} className="text-blue-600" /> Identificación / Cédula / RUC
                         </label>
                         <input
-                            value={form_cliente.identificacion}
+                            value={form_cliente.identificacion || ''}
                             onChange={handleChangeInput}
                             type="text"
                             name="identificacion"
@@ -100,7 +122,7 @@ export default function ModalCliente(): React.ReactElement | null {
                                 <User size={14} className="text-blue-600" /> Nombres
                             </label>
                             <input
-                                value={form_cliente.nombres}
+                                value={form_cliente.nombres || ''}
                                 onChange={handleChangeInput}
                                 type="text"
                                 name="nombres"
@@ -115,7 +137,7 @@ export default function ModalCliente(): React.ReactElement | null {
                                 <User size={14} className="text-blue-600" /> Apellidos
                             </label>
                             <input
-                                value={form_cliente.apellidos}
+                                value={form_cliente.apellidos || ''}
                                 onChange={handleChangeInput}
                                 type="text"
                                 name="apellidos"
@@ -132,7 +154,7 @@ export default function ModalCliente(): React.ReactElement | null {
                                 <Phone size={14} className="text-blue-600" /> Teléfono
                             </label>
                             <input
-                                value={form_cliente.telefono}
+                                value={form_cliente.telefono || ''}
                                 onChange={handleChangeInput}
                                 type="text"
                                 name="telefono"
@@ -146,7 +168,7 @@ export default function ModalCliente(): React.ReactElement | null {
                                 <Mail size={14} className="text-blue-600" /> Correo Electrónico
                             </label>
                             <input
-                                value={form_cliente.email}
+                                value={form_cliente.email || ''}
                                 onChange={handleChangeInput}
                                 type="email"
                                 name="email"
@@ -161,7 +183,7 @@ export default function ModalCliente(): React.ReactElement | null {
                             <MapPin size={14} className="text-blue-600" /> Dirección
                         </label>
                         <textarea
-                            value={form_cliente.direccion}
+                            value={form_cliente.direccion || ''}
                             onChange={handleChangeTextArea}
                             name="direccion"
                             rows={2}
@@ -180,18 +202,17 @@ export default function ModalCliente(): React.ReactElement | null {
                         </button>
 
                         <button
-                            onClick={EnviarCliente}
                             type="submit"
                             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >
                             <Save size={15} />
-                            <span>Guardar</span>
+                            <span>Guardar Cliente</span>
                         </button>
                     </div>
 
                 </div>
 
-            </div>
+            </form>
         </div>
     );
 }

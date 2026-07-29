@@ -377,7 +377,7 @@ func ModificarCliente(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"messaje": "error insertando la auditoria"})
 	}
 
-	return c.Status(201).JSON(fiber.Map{"message": "registro actualizado correctamente"})
+	return c.Status(201).JSON(fiber.Map{"message": "registro actualizado correctamente", "cliente_id": cliente.ClienteId})
 
 }
 
