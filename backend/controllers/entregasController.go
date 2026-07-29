@@ -41,9 +41,12 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 		  en.conformidad_cliente,
 		  en.comprobante_nro,
 		  eq.codigo,
-		  (u.nombres || ' ' || u.apellidos) AS nombres
+		  (u.nombres || ' ' || u.apellidos) AS usuario,
+		  cli.nombres,
+		  cli.apellidos
 		FROM entregas en
 		INNER JOIN equipos eq ON en.equipo_id = eq.equipo_id
+		INNER JOIN clientes cli ON eq.cliente_id = cli.cliente_id
 		INNER JOIN usuarios u ON en.usuario_id = u.usuario_id
 		WHERE en.equipo_id = ?`, id)
 
@@ -65,7 +68,9 @@ func ConsultarEntregaPorEquipo(c *fiber.Ctx) error {
 			&entrega.ConformidadCliente,
 			&entrega.ComprobanteNro,
 			&entrega.EquipoCodigo,
-			&entrega.Usuario)
+			&entrega.Usuario,
+			&entrega.Nombres,
+			&entrega.Apellidos)
 
 		if err != nil {
 			_ = helpers.InsertLogsError(conn, "entregas", "Error al leer los registros "+err.Error())

@@ -11,7 +11,10 @@ type EntregaDTO struct {
 	ConformidadCliente int    `json:"conformidad_cliente"`
 	ComprobanteNro     string `json:"comprobante_nro"`
 	EquipoCodigo       string `json:"equipo_codigo"`
-	Usuario            string `json:"nombres"`
+	Usuario            string `json:"usuario"`
+
+	Nombres   string `json:"nombres"`
+	Apellidos string `json:"apellidos"`
 }
 
 type Entrega struct {

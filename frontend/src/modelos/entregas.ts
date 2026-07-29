@@ -14,7 +14,9 @@ export interface EntregaDTO {
     conformidad_cliente: number;
     comprobante_nro: string;
     equipo_codigo: string;
+    usuario: string;
     nombres: string;
+    apellidos: string;
 }
 
 

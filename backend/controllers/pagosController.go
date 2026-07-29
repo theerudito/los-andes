@@ -35,9 +35,12 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
       c.costo_total,
       c.abono,
       c.saldo,
-      e.tipo_equipo
+      e.tipo_equipo,
+      cli.nombres,
+      cli.apellidos
     FROM cuentas_reparacion c
     INNER JOIN equipos e ON c.equipo_id = e.equipo_id
+    INNER JOIN clientes cli ON e.cliente_id = cli.cliente_id
     WHERE c.equipo_id = ?`, id)
 
 	if err != nil {
@@ -51,11 +54,13 @@ func ConsultarCuentaEquipo(c *fiber.Ctx) error {
 		err = rows.Scan(
 			&cuenta.CuentaId,
 			&cuenta.EquipoId,
-			&cuenta.EquipoCodigo,
+			&cuenta.Codigo,
 			&cuenta.CostoTotal,
 			&cuenta.Abono,
 			&cuenta.Saldo,
 			&cuenta.Equipo,
+			&cuenta.Nombres,
+			&cuenta.Apellidos,
 		)
 
 		if err != nil {
@@ -116,7 +121,7 @@ func ConsultarCuenta(c *fiber.Ctx) error {
 		err = rows.Scan(
 			&cuenta.CuentaId,
 			&cuenta.EquipoId,
-			&cuenta.EquipoCodigo,
+			&cuenta.Codigo,
 			&cuenta.CostoTotal,
 			&cuenta.Abono,
 			&cuenta.Saldo,

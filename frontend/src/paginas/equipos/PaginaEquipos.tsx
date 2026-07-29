@@ -254,9 +254,10 @@ export default function PaginaEquipos(): React.ReactElement {
 
                             <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold z-10">
                             <tr>
-                                <th className="px-4 py-3">Código</th>
-                                <th className="px-4 py-3">Equipo / Marca</th>
+                                <th className="px-4 py-3">Id</th>
                                 <th className="px-4 py-3">Cliente</th>
+                                <th className="px-4 py-3">Orden</th>
+                                <th className="px-4 py-3">Equipo / Marca</th>
                                 <th className="px-4 py-3">Problema / Obs.</th>
                                 <th className="px-4 py-3">Estado</th>
                                 <th className="px-4 py-3">Fechas</th>
@@ -270,7 +271,16 @@ export default function PaginaEquipos(): React.ReactElement {
                                     <tr key={equipo.equipo_id} className="hover:bg-gray-50/80 transition-colors text-xs">
 
                                         <td className="px-4 py-3 whitespace-nowrap font-bold text-gray-900">
-                                            {equipo.codigo}
+                                            #{equipo.equipo_id}
+                                        </td>
+
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="font-medium text-gray-800">{equipo.nombres} {equipo.apellidos}</div>
+                                            <div className="text-[11px] text-gray-400">ID: #{equipo.cliente_id}</div>
+                                        </td>
+
+                                        <td className="px-4 py-3 whitespace-nowrap font-bold text-gray-900">
+                                            N° {equipo.codigo}
                                         </td>
 
                                         <td className="px-4 py-3 whitespace-nowrap">
@@ -281,11 +291,6 @@ export default function PaginaEquipos(): React.ReactElement {
                                         </span>
                                                 <span className="text-[11px] text-gray-400 font-mono">S/N: {equipo.numero_serie}</span>
                                             </div>
-                                        </td>
-
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <div className="font-medium text-gray-800">{equipo.nombres} {equipo.apellidos}</div>
-                                            <div className="text-[11px] text-gray-400">ID: #{equipo.cliente_id}</div>
                                         </td>
 
                                         <td className="px-4 py-3 max-w-xs truncate" title={equipo.descripcion_problema}>

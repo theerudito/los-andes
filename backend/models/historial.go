@@ -19,6 +19,8 @@ type HistorialDTO struct {
 	EstadoId int    `json:"estado_id"`
 	Estado   string `json:"estado"`
 
+	Codigo string `json:"codigo"`
+
 	UsuarioId         int    `json:"usuario_id"`
 	Nombres_Usuario   string `json:"nombres_usuario"`
 	Apellidos_Usuario string `json:"apellidos_usuario"`

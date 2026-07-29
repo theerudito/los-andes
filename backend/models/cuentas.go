@@ -11,12 +11,15 @@ type Cuentas struct {
 }
 
 type CuentasDTO struct {
-	CuentaId     int     `json:"cuenta_id"`
-	CostoTotal   float64 `json:"costo_total"`
-	Abono        float64 `json:"abono"`
-	Saldo        float64 `json:"saldo"`
-	EquipoCodigo string  `json:"codigo"`
-	EquipoId     int     `json:"equipo_id"`
-	Equipo       string  `json:"equipo"`
-	Estado       string  `json:"estado"`
+	CuentaId   int     `json:"cuenta_id"`
+	CostoTotal float64 `json:"costo_total"`
+	Abono      float64 `json:"abono"`
+	Saldo      float64 `json:"saldo"`
+	Codigo     string  `json:"codigo"`
+	EquipoId   int     `json:"equipo_id"`
+	Equipo     string  `json:"equipo"`
+	Estado     string  `json:"estado"`
+
+	Nombres   string `json:"nombres"`
+	Apellidos string `json:"apellidos"`
 }

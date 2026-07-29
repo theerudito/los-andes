@@ -106,8 +106,9 @@ export default function PaginaHistorial(): React.ReactElement {
                         <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold z-10">
                         <tr>
                             <th className="px-4 py-3.5 w-16">ID</th>
-                            <th className="px-4 py-3.5 min-w-[160px]">Equipo / Serie</th>
                             <th className="px-4 py-3.5 min-w-[160px]">Cliente</th>
+                            <th className="px-4 py-3.5 min-w-[160px]">Orden</th>
+                            <th className="px-4 py-3.5 min-w-[160px]">Equipo / Serie</th>
                             <th className="px-4 py-3.5 min-w-[220px]">Observaciones Técnicas</th>
                             <th className="px-4 py-3.5 w-32">Estado</th>
                             <th className="px-4 py-3.5 min-w-[140px]">Técnico</th>
@@ -119,18 +120,22 @@ export default function PaginaHistorial(): React.ReactElement {
                         {listar_historial.length > 0 ? (
                             listar_historial.map((item) => (
                                 <tr key={item.historial_id} className="hover:bg-gray-50/80 transition-colors text-xs">
+
                                     <td className="px-4 py-3.5 font-bold text-gray-900">
                                         #{item.historial_id}
                                     </td>
 
                                     <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <div className="font-bold text-gray-800 text-sm">{item.equipo}</div>
-                                        <div className="text-[11px] text-gray-400 font-mono">S/N: {item.serie}</div>
+                                        <div className="font-medium text-gray-800">{item.nombres_cliente} {item.apellidos_cliente}</div>
                                     </td>
 
                                     <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <div className="font-medium text-gray-800">{item.nombres_cliente} {item.apellidos_cliente}</div>
-                                        <div className="text-[11px] text-gray-400">ID Cliente: #{item.cliente_id}</div>
+                                        <div className="font-medium text-gray-800">N° {item.codigo}</div>
+                                    </td>
+
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <div className="font-bold text-gray-800 text-sm">{item.equipo}</div>
+                                        <div className="text-[11px] text-gray-400 font-mono">S/N: {item.serie}</div>
                                     </td>
 
                                     <td className="px-4 py-3.5 max-w-xs truncate" title={item.observaciones_tecnicas}>

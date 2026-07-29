@@ -87,8 +87,9 @@ export default function PaginaEntregas(): React.ReactElement {
                         <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold z-10">
                         <tr>
                             <th className="px-4 py-3.5 w-16">ID</th>
+                            <th className="px-4 py-3.5 min-w-[160px]">Cliente</th>
                             <th className="px-4 py-3.5 w-32">Comprobante</th>
-                            <th className="px-4 py-3.5 w-32">Código Equipo</th>
+                            <th className="px-4 py-3.5 w-32">Orden</th>
                             <th className="px-4 py-3.5 min-w-[200px]">Trabajos Realizados</th>
                             <th className="px-4 py-3.5 min-w-[200px]">Estado Final</th>
                             <th className="px-4 py-3.5 w-32">Conformidad</th>
@@ -107,12 +108,16 @@ export default function PaginaEntregas(): React.ReactElement {
                                         #{item.entrega_id}
                                     </td>
 
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <div className="font-medium text-gray-800">{item.nombres} {item.apellidos}</div>
+                                    </td>
+
                                     <td className="px-4 py-3.5 font-mono font-bold text-amber-700 whitespace-nowrap">
                                         N° {item.comprobante_nro}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
-                                        {item.equipo_codigo}
+                                        N° {item.equipo_codigo}
                                     </td>
 
                                     <td className="px-4 py-3.5 max-w-xs truncate" title={item.trabajos_realizados}>
@@ -140,7 +145,7 @@ export default function PaginaEntregas(): React.ReactElement {
                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                         <div className="inline-flex items-center gap-1 text-gray-700 font-medium">
                                             <User className="w-3.5 h-3.5 text-gray-400" />
-                                            <span>{item.nombres}</span>
+                                            <span>{item.usuario}</span>
                                         </div>
                                     </td>
 

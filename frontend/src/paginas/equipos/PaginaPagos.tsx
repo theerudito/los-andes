@@ -74,7 +74,8 @@ export default function PaginaPagos(): React.ReactElement {
                         <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold z-10">
                         <tr>
                             <th className="px-4 py-3.5 w-16">ID</th>
-                            <th className="px-4 py-3.5 w-36">Código Equipo</th>
+                            <th className="px-4 py-3.5 min-w-[160px]">Cliente</th>
+                            <th className="px-4 py-3.5 w-36">Orden</th>
                             <th className="px-4 py-3.5 w-32 text-right">Costo Total</th>
                             <th className="px-4 py-3.5 w-32 text-right">Abono</th>
                             <th className="px-4 py-3.5 w-32 text-right">Saldo</th>
@@ -92,9 +93,12 @@ export default function PaginaPagos(): React.ReactElement {
                                         #{item.cuenta_id}
                                     </td>
 
-                                    {/* 🛠️ FIX: Reemplazado item.equipo e item.codigo por item.equipo_codigo */}
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <div className="font-medium text-gray-800">{item.nombres} {item.apellidos}</div>
+                                    </td>
+
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
-                                        ORDEN: {item.equipo_codigo}
+                                        N° {item.codigo}
                                     </td>
 
                                     <td className="px-4 py-3.5 font-semibold text-gray-800 text-right whitespace-nowrap">

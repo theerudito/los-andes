@@ -10,6 +10,7 @@ export interface HistorialDTO {
     observaciones_tecnicas: string;
     fecha: string;
     equipo_id: number;
+    codigo: string;
     equipo: string;
     serie: string;
     estado_id: number;
