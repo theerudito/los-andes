@@ -139,7 +139,19 @@ export const useEquipos = create<Data>((set, get) => ({
         try {
             await equipoService.descargarReporteEquiposPdf(req);
         } catch (error: any) {
-            const mensajeError = error?.response?.data?.error || "Error al procesar el reporte";
+            let mensajeError = "Error al procesar el reporte";
+
+            if (error?.response?.data instanceof Blob) {
+                try {
+                    const textoError = await error.response.data.text();
+                    const jsonError = JSON.parse(textoError);
+                    mensajeError = jsonError.error || mensajeError;
+                } catch {
+                    mensajeError = "Error al generar el archivo PDF";
+                }
+            } else if (error?.response?.data?.error) {
+                mensajeError = error.response.data.error;
+            }
 
             toast.error(mensajeError);
         }

@@ -28,7 +28,9 @@ export default function PaginaAuditoriaError(): React.ReactElement {
             fecha_hasta: formatearFecha(fechaHasta),
             modulo: modulo
         };
+        
         const data = await logsService.obtenerLogsError(obj);
+
         setLogs(data);
     }
 
@@ -106,7 +108,6 @@ export default function PaginaAuditoriaError(): React.ReactElement {
                             onChange={handleRangoChange}
                             className="w-36 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-medium focus:outline-none focus:ring-0 focus:border-red-500 cursor-pointer"
                         >
-                            <option value="" disabled>Seleccionar filtro...</option>
                             <option value="hoy">Hoy</option>
                             <option value="mes_actual">Mes actual</option>
                             <option value="mes_anterior">Mes anterior</option>

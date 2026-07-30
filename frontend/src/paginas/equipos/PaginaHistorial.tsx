@@ -92,7 +92,7 @@ export default function PaginaHistorial(): React.ReactElement {
                             title="Exportar Historial a PDF"
                         >
                             <FileText className="w-4 h-4" />
-                            <span>Generar Reporte PDF</span>
+                            <span>Generar PDF</span>
                         </button>
                     </div>
 

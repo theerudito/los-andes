@@ -42,4 +42,6 @@ export interface EquipoDTO {
 export interface RPT_Equipos {
     fecha_desde: string;
     fecha_hasta: string;
+    cliente_id: number;
+    estado: number;
 }

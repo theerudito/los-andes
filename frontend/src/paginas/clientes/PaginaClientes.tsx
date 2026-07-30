@@ -146,7 +146,6 @@ export default function PaginaClientes(): React.ReactElement {
                             onChange={handleRangoChange}
                             className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
                         >
-                            <option value="" disabled>Seleccionar filtro...</option>
                             <option value="hoy">Hoy</option>
                             <option value="mes_actual">Mes actual</option>
                             <option value="mes_anterior">Mes anterior</option>
@@ -195,7 +194,7 @@ export default function PaginaClientes(): React.ReactElement {
                         title="Exportar a PDF"
                     >
                         <FileText className="w-4 h-4"/>
-                        <span>Generar Reporte PDF</span>
+                        <span>Generar PDF</span>
                     </button>
 
                 </div>

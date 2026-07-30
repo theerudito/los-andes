@@ -517,7 +517,7 @@ func ReporteCliente(c *fiber.Ctx) error {
 	}
 
 	if len(clientes) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros en el rango seleccionado"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
 	}
 
 	pdf := gofpdf.New("P", "mm", "A4", "")

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus,
@@ -10,29 +10,50 @@ import {
     PackageCheck,
     FileText,
     Calendar,
-    Filter, PrinterCheck
+    Filter,
+    PrinterCheck,
+    EraserIcon,
+    Search,
+    RotateCcw
 } from 'lucide-react';
-import {useModal} from "../../store/useModal.ts";
-import {ModalLista} from "../../helpers/ModalLista.ts";
-import {useEquipos} from "../../store/useEquipos.ts";
-import type {RPT_Equipos} from "../../modelos/equipos.ts";
+import { useModal } from "../../store/useModal.ts";
+import { ModalLista } from "../../helpers/ModalLista.ts";
+import { useEquipos } from "../../store/useEquipos.ts";
+import type { RPT_Equipos } from "../../modelos/equipos.ts";
 import ModalMarcas from "../../modales/ModalMarcas.tsx";
 import ReactDatePicker from "react-datepicker";
-import {formatearFecha} from "../../helpers/formatearFecha.ts";
+import { formatearFecha } from "../../helpers/formatearFecha.ts";
+import { useClientes } from "../../store/useClientes.ts";
+import {toast} from "sonner";
+
+const estadosOpciones = [
+    { estado_id: 0, nombre: "Todos" },
+    { estado_id: 1, nombre: "Recibido" },
+    { estado_id: 2, nombre: "En diagnóstico" },
+    { estado_id: 3, nombre: "Esperando repuestos" },
+    { estado_id: 4, nombre: "En reparación" },
+    { estado_id: 5, nombre: "Listo para entrega" },
+    { estado_id: 6, nombre: "Entregado" },
+    { estado_id: 7, nombre: "Cancelado" }
+];
 
 export default function PaginaEquipos(): React.ReactElement {
     const OpenModal = useModal((state) => state.OpenModal);
-    const {ObtenerEquipos, ObtenerEquipo, EliminarEquipo, DescargarPdf, DescargarOrdenPdf, listar_equipos} = useEquipos((state) => state);
+    const { ObtenerClientePorIdentifiacion, form_cliente } = useClientes((state) => state);
+    const { ObtenerEquipos, ObtenerEquipo, EliminarEquipo, DescargarPdf, DescargarOrdenPdf, listar_equipos } = useEquipos((state) => state);
+
+    const [identificacion, setIdentificacion] = useState<string>("");
+    const [estado, setEstado] = useState<number>(0);
+    const [busqueda, setBusqueda] = useState<string>('');
+    const [periodoSelect, setPeriodoSelect] = useState<string>("hoy");
+    const [fechaDesde, setFechaDesde] = useState<Date | null>(new Date());
+    const [fechaHasta, setFechaHasta] = useState<Date | null>(new Date());
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         ObtenerEquipos();
     }, []);
-
-    const navigate = useNavigate();
-    const [busqueda, setBusqueda] = useState<string>('');
-
-    const [fechaDesde, setFechaDesde] = useState<Date | null>(new Date());
-    const [fechaHasta, setFechaHasta] = useState<Date | null>(new Date());
 
     const equiposFiltrados = listar_equipos.filter((e) =>
         e.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -56,21 +77,24 @@ export default function PaginaEquipos(): React.ReactElement {
         navigate(`/equipos/pagos?equipo_id=${equipo_id}`);
     };
 
-    function VerEquipo (id: number) {
-        OpenModal(ModalLista.modal_equipo)
-        ObtenerEquipo(id)
+    function VerEquipo(id: number) {
+        OpenModal(ModalLista.modal_equipo);
+        ObtenerEquipo(id);
     }
 
     function VerReporte() {
         const obj: RPT_Equipos = {
             fecha_desde: formatearFecha(fechaDesde),
-            fecha_hasta: formatearFecha(fechaHasta)
+            fecha_hasta: formatearFecha(fechaHasta),
+            cliente_id: identificacion !== "" ? form_cliente.cliente_id : 0,
+            estado: estado
         };
         DescargarPdf(obj);
     }
 
     const handleRangoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const opcion = e.target.value;
+        setPeriodoSelect(opcion);
         const hoy = new Date();
 
         switch (opcion) {
@@ -131,8 +155,42 @@ export default function PaginaEquipos(): React.ReactElement {
         }
     };
 
-    return (<>
-        <ModalMarcas/>
+    async function ObtenerCliente() {
+        if (!identificacion.trim()) {
+            toast.error("Ingrese un número de cédula o RUC");
+            return;
+        }
+
+        await ObtenerClientePorIdentifiacion(identificacion);
+
+        if (form_cliente.identificacion !== ""){
+            toast.success("Cliente cargado correctamente");
+        } else {
+            toast.error("No se encontró ningún cliente registrado con esa identificación");
+        }
+    }
+
+    function ResetField() {
+        setIdentificacion("");
+        form_cliente.identificacion = "";
+        form_cliente.nombres = "";
+        form_cliente.apellidos = "";
+    }
+
+    function Reset() {
+        setIdentificacion("");
+        setEstado(0);
+        setPeriodoSelect("hoy");
+        setFechaDesde(new Date());
+        setFechaHasta(new Date());
+        form_cliente.identificacion = "";
+        form_cliente.nombres = "";
+        form_cliente.apellidos = "";
+    }
+
+    return (
+        <>
+            <ModalMarcas />
             <div className="space-y-6 w-full">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-full">
                     <div>
@@ -141,7 +199,6 @@ export default function PaginaEquipos(): React.ReactElement {
                     </div>
 
                     <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
-
                         <div className="relative flex-1 min-w-[240px] max-w-md">
                             <input
                                 type="text"
@@ -153,10 +210,9 @@ export default function PaginaEquipos(): React.ReactElement {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
-
                             <button
                                 onClick={() => OpenModal(ModalLista.modal_marca)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shadow-sm"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                             >
                                 <Tag className="w-3.5 h-3.5" />
                                 <span>Nueva Marca</span>
@@ -164,35 +220,85 @@ export default function PaginaEquipos(): React.ReactElement {
 
                             <button
                                 onClick={() => OpenModal(ModalLista.modal_equipo)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                             >
                                 <Plus className="w-3.5 h-3.5" />
                                 <span>Nuevo Equipo</span>
                             </button>
-
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 w-full flex flex-wrap items-center justify-between gap-4">
-
-                    <div className="flex items-center gap-2 text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 w-full space-y-4">
+                    <div className="flex items-center gap-2 text-gray-800 font-bold text-xs uppercase tracking-wider border-b border-gray-100 pb-3">
                         <Filter className="w-4 h-4 text-blue-600" />
                         <span>Generación de Reportes PDF de Equipos</span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-end">
+                        <div className="xl:col-span-3 flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-gray-600 flex items-center gap-1 truncate">
+                                <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                {!form_cliente.identificacion ? "Cliente" : `Cliente: ${form_cliente.nombres} ${form_cliente.apellidos}`}
+                            </label>
+                            <div className="flex items-center h-9">
+                                <input
+                                    value={identificacion}
+                                    onChange={(e) => setIdentificacion(e.target.value)}
+                                    name="identificacion"
+                                    type="text"
+                                    placeholder="Identificación / Cédula"
+                                    className="w-full h-full px-3 bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
+                                />
 
-                        <div className="flex items-center gap-2">
-                            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                                <Filter className="w-3.5 h-3.5 text-gray-400" /> Período:
+                                <button
+                                    onClick={ResetField}
+                                    type="button"
+                                    className="h-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white px-3 flex items-center justify-center transition-all shrink-0 cursor-pointer"
+                                    title="Limpiar datos de cliente"
+                                >
+                                    <EraserIcon size={14} />
+                                </button>
+
+                                <button
+                                    onClick={ObtenerCliente}
+                                    type="button"
+                                    className="h-full bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white px-3 rounded-r-lg flex items-center justify-center transition-all shrink-0 cursor-pointer"
+                                    title="Buscar Cliente por Cédula / RUC"
+                                >
+                                    <Search size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="xl:col-span-2 flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+                                <Filter className="w-3.5 h-3.5 text-gray-400" /> Estado
                             </label>
                             <select
-                                defaultValue=""
-                                onChange={handleRangoChange}
-                                className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
+                                name="estado_id"
+                                value={estado}
+                                required
+                                onChange={(e) => setEstado(Number(e.target.value))}
+                                className="w-full h-9 px-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium uppercase cursor-pointer"
                             >
-                                <option value="" disabled>Seleccionar filtro...</option>
+                                {estadosOpciones.map((e) => (
+                                    <option key={e.estado_id} value={e.estado_id}>
+                                        {e.nombre}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="xl:col-span-2 flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+                                <Filter className="w-3.5 h-3.5 text-gray-400" /> Período
+                            </label>
+                            <select
+                                value={periodoSelect}
+                                onChange={handleRangoChange}
+                                className="w-full h-9 px-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
+                            >
                                 <option value="hoy">Hoy</option>
                                 <option value="mes_actual">Mes actual</option>
                                 <option value="mes_anterior">Mes anterior</option>
@@ -201,12 +307,10 @@ export default function PaginaEquipos(): React.ReactElement {
                             </select>
                         </div>
 
-                        <div className="w-[1px] h-6 bg-gray-200 hidden sm:block"/>
-
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> Desde:
+                        <div className="xl:col-span-3 flex items-center gap-2">
+                            <div className="flex flex-col gap-1.5 w-1/2">
+                                <label className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+                                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> Desde
                                 </label>
                                 <ReactDatePicker
                                     selected={fechaDesde}
@@ -214,13 +318,13 @@ export default function PaginaEquipos(): React.ReactElement {
                                     dateFormat="dd/MM/yyyy"
                                     locale="es"
                                     popperClassName="!z-[9999]"
-                                    className="w-28 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-mono font-medium focus:outline-none focus:ring-0 focus:border-emerald-500 cursor-pointer"
+                                    className="w-full h-9 px-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-mono font-medium text-center focus:outline-none focus:border-blue-500 cursor-pointer"
                                 />
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> Hasta:
+                            <div className="flex flex-col gap-1.5 w-1/2">
+                                <label className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+                                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> Hasta
                                 </label>
                                 <ReactDatePicker
                                     selected={fechaHasta}
@@ -228,30 +332,38 @@ export default function PaginaEquipos(): React.ReactElement {
                                     dateFormat="dd/MM/yyyy"
                                     locale="es"
                                     popperClassName="!z-[9999]"
-                                    className="w-28 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-mono font-medium focus:outline-none focus:ring-0 focus:border-emerald-500 cursor-pointer"
+                                    className="w-full h-9 px-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 font-mono font-medium text-center focus:outline-none focus:border-blue-500 cursor-pointer"
                                 />
                             </div>
                         </div>
 
-                        <div className="w-[1px] h-6 bg-gray-200 hidden sm:block"/>
+                        <div className="xl:col-span-2 flex items-center gap-2">
+                            <button
+                                onClick={Reset}
+                                type="button"
+                                className="w-1/2 h-9 inline-flex items-center justify-center gap-1.5 px-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-lg transition-all shadow-sm cursor-pointer border border-gray-200"
+                                title="Limpiar todos los filtros"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Reset</span>
+                            </button>
 
-                        <button
-                            onClick={VerReporte}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"
-                            title="Exportar a PDF"
-                        >
-                            <FileText className="w-4 h-4"/>
-                            <span>Generar Reporte PDF</span>
-                        </button>
-
+                            <button
+                                onClick={VerReporte}
+                                type="button"
+                                className="w-1/2 h-9 inline-flex items-center justify-center gap-1.5 px-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 active:scale-95 rounded-lg transition-all shadow-sm cursor-pointer"
+                                title="Exportar a PDF"
+                            >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Generar PDF</span>
+                            </button>
+                        </div>
                     </div>
-
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
                     <div className="overflow-x-auto max-h-[600px] overflow-y-auto w-full">
                         <table className="w-full text-left text-sm text-gray-600">
-
                             <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold z-10">
                             <tr>
                                 <th className="px-4 py-3">Id</th>
@@ -269,7 +381,6 @@ export default function PaginaEquipos(): React.ReactElement {
                             {equiposFiltrados.length > 0 ? (
                                 equiposFiltrados.map((equipo) => (
                                     <tr key={equipo.equipo_id} className="hover:bg-gray-50/80 transition-colors text-xs">
-
                                         <td className="px-4 py-3 whitespace-nowrap font-bold text-gray-900">
                                             #{equipo.equipo_id}
                                         </td>
@@ -286,9 +397,9 @@ export default function PaginaEquipos(): React.ReactElement {
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="font-semibold text-gray-800 text-sm">{equipo.tipo_equipo} {equipo.modelo}</div>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600 rounded">
-                                          {equipo.marca}
-                                        </span>
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600 rounded">
+                                                        {equipo.marca}
+                                                    </span>
                                                 <span className="text-[11px] text-gray-400 font-mono">S/N: {equipo.numero_serie}</span>
                                             </div>
                                         </td>
@@ -303,9 +414,9 @@ export default function PaginaEquipos(): React.ReactElement {
                                         </td>
 
                                         <td className="px-4 py-3 whitespace-nowrap">
-                                    <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-full border ${getBadgeEstado(equipo.estado)}`}>
-                                        {equipo.estado}
-                                    </span>
+                                                <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-full border ${getBadgeEstado(equipo.estado)}`}>
+                                                    {equipo.estado}
+                                                </span>
                                         </td>
 
                                         <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-500">
@@ -317,19 +428,18 @@ export default function PaginaEquipos(): React.ReactElement {
                                             <div className="flex items-center justify-center gap-1.5">
                                                 <button
                                                     onClick={() => DescargarOrdenPdf(equipo.equipo_id)}
-                                                    className="p-1.5 text-aqua-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-indigo-100"
+                                                    className="p-1.5 text-emerald-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-100"
                                                     title="Imprimir Orden"
                                                 >
                                                     <PrinterCheck className="w-4 h-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleVerHistorial(equipo.equipo_id)}
-                                                    className={"p-1.5 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors border border-yellow-100"}
+                                                    className="p-1.5 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors border border-yellow-100"
                                                     title="Ver Historial"
                                                 >
                                                     <History className="w-4 h-4" />
                                                 </button>
-
                                                 <button
                                                     onClick={() => handleGestionarPagos(equipo.equipo_id)}
                                                     className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-100"
@@ -337,7 +447,6 @@ export default function PaginaEquipos(): React.ReactElement {
                                                 >
                                                     <CreditCard className="w-4 h-4" />
                                                 </button>
-
                                                 <button
                                                     onClick={() => handleGestionarEntrega(equipo.equipo_id)}
                                                     className="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors border border-amber-100"
@@ -359,15 +468,13 @@ export default function PaginaEquipos(): React.ReactElement {
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
-
                                             </div>
                                         </td>
-
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                                    <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                                         No se encontraron equipos registrados.
                                     </td>
                                 </tr>
@@ -381,7 +488,6 @@ export default function PaginaEquipos(): React.ReactElement {
                     </div>
                 </div>
             </div>
-    </>
-
+        </>
     );
 }

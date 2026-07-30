@@ -9,12 +9,24 @@ import {
 } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
-import {useEntregas} from "../store/useEntregas.ts";
+import { useEntregas } from "../store/useEntregas.ts";
 import React from "react";
+import { toast } from "sonner";
 
 export default function ModalEntregas(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
     const { form_entrega, EnviarEntrega, equipo_id, reset } = useEntregas((state) => state);
+
+    function Enviar(e?: React.SubmitEvent) {
+        if (e) e.preventDefault();
+
+        if (!form_entrega.trabajos_realizados || form_entrega.trabajos_realizados.trim() === "") {
+            toast.error("El trabajo realizado es requerido");
+            return;
+        }
+
+        EnviarEntrega();
+    }
 
     const handleChangeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -38,9 +50,9 @@ export default function ModalEntregas(): React.ReactElement | null {
         }));
     };
 
-    function Clear(){
-        CloseModal()
-        reset()
+    function Clear() {
+        CloseModal();
+        reset();
     }
 
     if (modalName !== ModalLista.modal_entrega) return null;
@@ -65,7 +77,7 @@ export default function ModalEntregas(): React.ReactElement | null {
                     </button>
                 </div>
 
-                <div className="p-5 bg-slate-50/50 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+                <form onSubmit={Enviar} className="p-5 bg-slate-50/50 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
@@ -110,7 +122,6 @@ export default function ModalEntregas(): React.ReactElement | null {
                             name="trabajos_realizados"
                             rows={2}
                             placeholder="Ej: SE FORMATEO Y MANTENIMIENTO GENERAL"
-                            required
                             className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 uppercase placeholder-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium resize-none shadow-sm"
                         />
                     </div>
@@ -125,7 +136,6 @@ export default function ModalEntregas(): React.ReactElement | null {
                             name="estado_final_equipo"
                             rows={2}
                             placeholder="Ej: BUEN ESTADO AUN HASTA NUEVO DIAGNOSTICO"
-                            required
                             className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 uppercase placeholder-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium resize-none shadow-sm"
                         />
                     </div>
@@ -140,7 +150,6 @@ export default function ModalEntregas(): React.ReactElement | null {
                         </button>
 
                         <button
-                            onClick={EnviarEntrega}
                             type="submit"
                             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >
@@ -149,7 +158,7 @@ export default function ModalEntregas(): React.ReactElement | null {
                         </button>
                     </div>
 
-                </div>
+                </form>
 
             </div>
         </div>

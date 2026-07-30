@@ -8,8 +8,9 @@ import {
 } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
-import {useHistorial} from "../store/useHistorial.ts";
+import { useHistorial } from "../store/useHistorial.ts";
 import React from "react";
+import { toast } from "sonner";
 
 const estadosOpciones = [
     { estado_id: 1, nombre: "Recibido" },
@@ -24,6 +25,22 @@ const estadosOpciones = [
 export default function ModalHistorial(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
     const { form_historial, EnviarHistorial, equipo_id } = useHistorial((state) => state);
+
+    function Enviar(e?: React.SubmitEvent) {
+        if (e) e.preventDefault();
+
+        if (!form_historial.estado_id || form_historial.estado_id <= 0) {
+            toast.error("Debe seleccionar un estado válido para el equipo");
+            return;
+        }
+
+        if (!form_historial.observaciones_tecnicas || form_historial.observaciones_tecnicas.trim() === "") {
+            toast.error("La observación técnica es requerida");
+            return;
+        }
+
+        EnviarHistorial();
+    }
 
     const handleChangeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -47,8 +64,8 @@ export default function ModalHistorial(): React.ReactElement | null {
         }));
     };
 
-    function Clear(){
-        CloseModal()
+    function Clear() {
+        CloseModal();
         useHistorial.setState({
             form_historial: {
                 equipo_id: 0,
@@ -57,7 +74,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                 historial_id: 0
             },
             isEditing: false,
-        })
+        });
     }
 
     if (modalName !== ModalLista.modal_historial) return null;
@@ -82,7 +99,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                     </button>
                 </div>
 
-                <div className="p-5 bg-slate-50/50 flex flex-col gap-4">
+                <form onSubmit={Enviar} className="p-5 bg-slate-50/50 flex flex-col gap-4">
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
@@ -104,7 +121,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                                 <Tag size={14} className="text-blue-600" /> Estado del Equipo
                             </label>
                             <select
-                                value={form_historial.estado_id}
+                                value={form_historial.estado_id || 2}
                                 onChange={handleChangeSelect}
                                 name="estado_id"
                                 required
@@ -127,7 +144,6 @@ export default function ModalHistorial(): React.ReactElement | null {
                             name="observaciones_tecnicas"
                             rows={3}
                             placeholder="Ej: completado todo ok"
-                            required
                             className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium resize-none shadow-sm"
                         />
                     </div>
@@ -142,7 +158,6 @@ export default function ModalHistorial(): React.ReactElement | null {
                         </button>
 
                         <button
-                            onClick={EnviarHistorial}
                             type="submit"
                             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-yellow-600 to-yellow-600 hover:from-yellow-700 hover:to-yellow-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >
@@ -151,7 +166,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                         </button>
                     </div>
 
-                </div>
+                </form>
 
             </div>
         </div>

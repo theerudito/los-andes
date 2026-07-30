@@ -170,7 +170,6 @@ export default function ModalEquipos(): React.ReactElement | null {
     }
 
     async function ObtenerCliente() {
-        // 🛠️ FIX 1: Usamos form_cliente.identificacion
         if (!form_cliente.identificacion?.trim()) {
             toast.error("Ingrese un número de cédula o RUC");
             return;
@@ -295,7 +294,6 @@ export default function ModalEquipos(): React.ReactElement | null {
 
                             <div className="flex items-stretch shadow-sm rounded-lg overflow-hidden border border-slate-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all bg-white h-10 divide-x divide-slate-200 w-full">
                                 <input
-                                    // 🛠️ FIX 3: Leemos de form_cliente.identificacion
                                     value={form_cliente.identificacion || ''}
                                     onChange={(e) => {
                                         const value = e.target.value;

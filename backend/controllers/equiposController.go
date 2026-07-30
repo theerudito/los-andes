@@ -761,16 +761,21 @@ func ReporteEquipos(c *fiber.Ctx) error {
 		INNER JOIN marcas m ON e.marca_id = m.marca_id
 		INNER JOIN estados_reparacion r ON e.estado_id = r.estado_id
 		WHERE 
-			DATE (e.fecha_recepcion) BETWEEN ? AND ?`
+			DATE(e.fecha_recepcion) BETWEEN ? AND ?`
 
 	args := []any{req.Fecha_Desde, req.Fecha_Hasta}
 
-	/*if lg.Modulo != "" {
-		query += " AND modulo = ?"
-		args = append(args, lg.Modulo)
-	}*/
+	if req.ClienteId != 0 {
+		query += " AND c.cliente_id = ?"
+		args = append(args, req.ClienteId)
+	}
 
-	query += "ORDER BY e.equipo_id DESC"
+	if req.Estado != 0 {
+		query += " AND e.estado_id = ?"
+		args = append(args, req.Estado)
+	}
+
+	query += " ORDER BY e.equipo_id DESC"
 
 	rows, err = conn.Query(query, args...)
 
@@ -812,7 +817,7 @@ func ReporteEquipos(c *fiber.Ctx) error {
 	}
 
 	if len(equipos) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros para el rango de fechas asignado"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No se encontraron registros"})
 	}
 
 	pdf := gofpdf.New("L", "mm", "A4", "")
@@ -868,7 +873,6 @@ func ReporteEquipos(c *fiber.Ctx) error {
 	c.Set("Content-Type", "application/pdf")
 	c.Set("Content-Disposition", `attachment; filename="reporte_equipos.pdf"`)
 	return c.Send(buf.Bytes())
-
 }
 
 func OrdenIngreso(c *fiber.Ctx) error {

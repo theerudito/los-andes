@@ -8,32 +8,41 @@ import {
 
 import { useModal } from "../store/useModal.ts";
 import { ModalLista } from "../helpers/ModalLista.ts";
-import {useMarcas} from "../store/useMarcas.ts";
-import React, {useEffect} from "react";
+import { useMarcas } from "../store/useMarcas.ts";
+import React, { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function ModalMarcas() {
     const { modalName, CloseModal } = useModal((state) => state);
-    const { ObtenerMarcas, ObtenerMarca, EnviarMarca, EliminarMarca, form_marca, listar_marca} = useMarcas((state) => state);
+    const { ObtenerMarcas, ObtenerMarca, EnviarMarca, EliminarMarca, form_marca, listar_marca } = useMarcas((state) => state);
 
     useEffect(() => {
         ObtenerMarcas();
     }, []);
 
+    function Enviar(e?: React.SubmitEvent) {
+        if (e) e.preventDefault();
+
+        if (!form_marca.nombre || form_marca.nombre.trim() === "") {
+            toast.error("El nombre de la marca es requerido");
+            return;
+        }
+
+        EnviarMarca();
+    }
+
     const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name } = e.target;
-        const value = e.target.value;
-        useMarcas.setState((state) => {
-            return {
-                form_marca: {
-                    ...state.form_marca,
-                    [name]: value.toUpperCase()
-                },
-            };
-        });
+        const { name, value } = e.target;
+        useMarcas.setState((state) => ({
+            form_marca: {
+                ...state.form_marca,
+                [name]: value.toUpperCase()
+            },
+        }));
     };
 
-    function Clear(){
-        CloseModal()
+    function Clear() {
+        CloseModal();
         useMarcas.setState({
             form_marca: {
                 marca_id: 0,
@@ -42,9 +51,8 @@ export default function ModalMarcas() {
                 fecha_modificacion: ""
             },
             isEditing: false,
-        })
+        });
     }
-
 
     if (modalName !== ModalLista.modal_marca) return null;
 
@@ -67,7 +75,7 @@ export default function ModalMarcas() {
                 </div>
 
                 <div className="p-5 bg-slate-50/50 flex flex-col gap-4">
-                    <div className="flex shadow-sm rounded-lg overflow-hidden border border-slate-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all bg-white h-10">
+                    <form onSubmit={Enviar} className="flex shadow-sm rounded-lg overflow-hidden border border-slate-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all bg-white h-10">
                         <input
                             type="text"
                             name="nombre"
@@ -78,17 +86,15 @@ export default function ModalMarcas() {
                         />
 
                         <div className="flex shrink-0 border-l border-slate-200">
-
                             <button
-                                onClick={EnviarMarca}
-                                type="button"
+                                type="submit"
                                 className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 flex items-center justify-center transition-all gap-1 text-xs font-semibold active:scale-95"
                                 title="Guardar"
                             >
                                 <Save size={15} />
                             </button>
                         </div>
-                    </div>
+                    </form>
                 </div>
 
                 <div className="px-5 pb-5 bg-slate-50/50 flex-1">
@@ -116,7 +122,7 @@ export default function ModalMarcas() {
                                             <td className="py-2.5 px-4 font-semibold text-slate-900 truncate">
                                                 #{item.marca_id}
                                             </td>
-                                            <td className="py-2.5 px-4 text-slate-700 font-medium truncate" title={`${item.nombre} `}>
+                                            <td className="py-2.5 px-4 text-slate-700 font-medium truncate" title={`${item.nombre}`}>
                                                 {item.nombre}
                                             </td>
                                             <td className="py-2.5 px-4 text-center">
