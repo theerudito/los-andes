@@ -34,7 +34,7 @@ export default function PaginaUsuarios(): React.ReactElement {
         const toastId = `delete-confirm-${id}`;
 
         toast.custom(
-            (t) => (
+            () => (
                 <div
                     className="flex items-center justify-between gap-3 w-auto max-w-[calc(100vw-2rem)] sm:max-w-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 rounded-xl shadow-lg text-xs select-none transition-all">
                     <span
