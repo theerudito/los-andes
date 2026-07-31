@@ -108,7 +108,7 @@ export default function ModalCliente(): React.ReactElement | null {
                         <input
                             value={form_cliente.identificacion || ''}
                             onChange={handleChangeInput}
-                            type="text"
+                            type="number"
                             name="identificacion"
                             placeholder="Ej: 1721457494001"
                             required
@@ -156,7 +156,7 @@ export default function ModalCliente(): React.ReactElement | null {
                             <input
                                 value={form_cliente.telefono || ''}
                                 onChange={handleChangeInput}
-                                type="text"
+                                type="number"
                                 name="telefono"
                                 placeholder="Ej: 0960806054"
                                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium"

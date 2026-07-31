@@ -13,6 +13,7 @@ import {useClientes} from "../../store/useClientes.ts";
 import type {RPT_Clientes} from "../../modelos/clientes.ts";
 import ReactDatePicker  from "react-datepicker";
 import {formatearFecha} from "../../helpers/formatearFecha.ts";
+import {toast} from "sonner";
 
 export default function PaginaClientes(): React.ReactElement {
     const {OpenModal} = useModal((state) => state);
@@ -24,6 +25,7 @@ export default function PaginaClientes(): React.ReactElement {
 
     useEffect(() => {
         ObtenerClientes();
+        toast.dismiss();
     }, []);
 
     function VerCliente (id: number) {
@@ -92,6 +94,36 @@ export default function PaginaClientes(): React.ReactElement {
                 break;
         }
     };
+
+    function Eliminar (id:number){
+        toast.custom(
+            (t) => (
+                <div className="flex items-center justify-between gap-3 w-auto max-w-[calc(100vw-2rem)] sm:max-w-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 rounded-xl shadow-lg text-xs select-none transition-all">
+                    <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate shrink">¿Eliminar elemento?</span>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                            onClick={() => toast.dismiss(t)}
+                            className="px-2.5 py-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg font-medium transition-colors cursor-pointer"
+                        >
+                            No
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                toast.dismiss(t);
+                                EliminarCliente(id)
+                            }}
+                            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-sm shadow-red-500/20 active:scale-95 transition-all cursor-pointer"
+                        >
+                            Sí
+                        </button>
+                    </div>
+                </div>
+            ),
+            { duration: Infinity }
+        );
+    }
 
     return (
         <div className="space-y-6 w-full">
@@ -252,7 +284,7 @@ export default function PaginaClientes(): React.ReactElement {
                                                 <Pencil className="w-4 h-4"/>
                                             </button>
                                             <button
-                                                onClick={() => EliminarCliente(cliente.cliente_id)}
+                                                onClick={() => Eliminar(cliente.cliente_id)}
                                                 className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100 cursor-pointer"
                                                 title="Eliminar cliente"
                                             >

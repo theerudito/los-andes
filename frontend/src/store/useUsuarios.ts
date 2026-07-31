@@ -84,7 +84,7 @@ export const useUsuarios = create<Data>((set, get) => ({
                 identificacion: form_usuario.identificacion,
                 nombres: form_usuario.nombres,
                 password: form_usuario.password,
-                rol_id: form_usuario.rol_id,
+                rol_id: form_usuario.rol_id === 0 ? 2 : form_usuario.rol_id,
                 tipo_identificacion: form_usuario.tipo_identificacion,
                 usuario_id: form_usuario.usuario_id
             };

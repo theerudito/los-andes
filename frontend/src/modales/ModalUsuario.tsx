@@ -13,28 +13,25 @@ import {
 } from 'lucide-react';
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
-import {useUsuarios} from "../store/useUsuarios.ts";
-import {ObtenerToken} from "../helpers/jwtDedoce.ts";
+import { useUsuarios } from "../store/useUsuarios.ts";
+import { ObtenerToken } from "../helpers/jwtDedoce.ts";
 
 export default function ModalUsuario(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
     const [verPassword, setVerPassword] = useState<boolean>(false);
 
-    const usuario = ObtenerToken()
+    const usuario = ObtenerToken();
 
-    const { form_usuario, EnviarUsuario } = useUsuarios((state) => state);
+    const { form_usuario, EnviarUsuario, isEditing } = useUsuarios((state) => state);
 
     const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name } = e.target;
-        const value = e.target.value;
-        useUsuarios.setState((state) => {
-            return {
-                form_usuario: {
-                    ...state.form_usuario,
-                    [name]: value
-                },
-            };
-        });
+        const { name, value } = e.target;
+        useUsuarios.setState((state) => ({
+            form_usuario: {
+                ...state.form_usuario,
+                [name]: value
+            },
+        }));
     };
 
     const handleChangeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -47,8 +44,14 @@ export default function ModalUsuario(): React.ReactElement | null {
         }));
     };
 
-    function Clear(){
-        CloseModal()
+
+    const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        EnviarUsuario();
+    };
+
+    function Clear() {
+        CloseModal();
         useUsuarios.setState({
             form_usuario: {
                 usuario_id: 0,
@@ -64,11 +67,11 @@ export default function ModalUsuario(): React.ReactElement | null {
                 rol_id: 0,
             },
             isEditing: false,
-        })
+        });
     }
 
     if (modalName !== ModalLista.modal_usuario) return null;
-    
+
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[60] p-4 transition-all duration-300">
             <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
@@ -77,7 +80,7 @@ export default function ModalUsuario(): React.ReactElement | null {
                     <div className="flex items-center gap-2">
                         <UserCheck size={18} />
                         <h2 className="font-semibold tracking-wide text-sm md:text-base">
-                            Registrar Nuevo Usuario
+                            {isEditing ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}
                         </h2>
                     </div>
                     <button
@@ -89,7 +92,7 @@ export default function ModalUsuario(): React.ReactElement | null {
                     </button>
                 </div>
 
-                <div className="p-5 bg-slate-50/50 flex flex-col gap-4">
+                <form onSubmit={handleSubmit} className="p-5 bg-slate-50/50 flex flex-col gap-4">
 
                     <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
@@ -98,7 +101,7 @@ export default function ModalUsuario(): React.ReactElement | null {
                         <input
                             value={form_usuario.identificacion}
                             onChange={handleChangeInput}
-                            type="text"
+                            type="number"
                             name="identificacion"
                             maxLength={13}
                             placeholder="Ej: 1234567892"
@@ -165,8 +168,8 @@ export default function ModalUsuario(): React.ReactElement | null {
                                     onChange={handleChangeInput}
                                     type={verPassword ? "text" : "password"}
                                     name="password"
-                                    placeholder="••••••••"
-                                    required
+                                    placeholder={isEditing ? "Opcional (Sin cambios)" : "••••••••"}
+                                    required={!isEditing}
                                     className="w-full h-10 pl-3 pr-10 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium shadow-sm"
                                 />
                                 <button
@@ -186,13 +189,13 @@ export default function ModalUsuario(): React.ReactElement | null {
                             <ShieldCheck size={14} className="text-blue-600" /> Rol de Usuario
                         </label>
                         <select
-                            value={form_usuario.rol_id}
+                            value={form_usuario.rol_id || ""}
                             onChange={handleChangeSelect}
                             name="rol_id"
                             required
                             className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-semibold uppercase cursor-pointer shadow-sm"
                         >
-                            <option disabled>SELECCIONE UN ROL</option>
+                            <option value="" disabled>SELECCIONE UN ROL</option>
                             {usuario?.user_id === 1 && (<option value={1}>SISTEMA</option>)}
                             <option value={2}>ADMINISTRADOR</option>
                             <option value={3}>TECNICO</option>
@@ -210,16 +213,15 @@ export default function ModalUsuario(): React.ReactElement | null {
                         </button>
 
                         <button
-                            onClick={EnviarUsuario}
                             type="submit"
                             className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all active:scale-95"
                         >
                             <Save size={15} />
-                            <span>Guardar Usuario</span>
+                            <span>{isEditing ? 'Actualizar Usuario' : 'Guardar Usuario'}</span>
                         </button>
                     </div>
 
-                </div>
+                </form>
 
             </div>
         </div>

@@ -310,7 +310,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                             ObtenerCliente();
                                         }
                                     }}
-                                    type="text"
+                                    type="number"
                                     name="identificacion"
                                     maxLength={13}
                                     placeholder="1721457494001"

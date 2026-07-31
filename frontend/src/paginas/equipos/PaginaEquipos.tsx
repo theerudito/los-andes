@@ -53,6 +53,7 @@ export default function PaginaEquipos(): React.ReactElement {
 
     useEffect(() => {
         ObtenerEquipos();
+        toast.dismiss();
     }, []);
 
     const equiposFiltrados = listar_equipos.filter((e) =>
@@ -188,6 +189,36 @@ export default function PaginaEquipos(): React.ReactElement {
         form_cliente.apellidos = "";
     }
 
+    function Eliminar (id:number){
+        toast.custom(
+            (t) => (
+                <div className="flex items-center justify-between gap-3 w-auto max-w-[calc(100vw-2rem)] sm:max-w-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 rounded-xl shadow-lg text-xs select-none transition-all">
+                    <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate shrink">¿Eliminar elemento?</span>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                            onClick={() => toast.dismiss(t)}
+                            className="px-2.5 py-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg font-medium transition-colors cursor-pointer"
+                        >
+                            No
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                toast.dismiss(t);
+                                EliminarEquipo(id)
+                            }}
+                            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-sm shadow-red-500/20 active:scale-95 transition-all cursor-pointer"
+                        >
+                            Sí
+                        </button>
+                    </div>
+                </div>
+            ),
+            { duration: Infinity }
+        );
+    }
+
     return (
         <>
             <ModalMarcas />
@@ -246,7 +277,7 @@ export default function PaginaEquipos(): React.ReactElement {
                                     value={identificacion}
                                     onChange={(e) => setIdentificacion(e.target.value)}
                                     name="identificacion"
-                                    type="text"
+                                    type="number"
                                     placeholder="Identificación / Cédula"
                                     className="w-full h-full px-3 bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
                                 />
@@ -462,7 +493,7 @@ export default function PaginaEquipos(): React.ReactElement {
                                                     <Pencil className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => EliminarEquipo(equipo.equipo_id)}
+                                                    onClick={() => Eliminar(equipo.equipo_id)}
                                                     className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
                                                     title="Eliminar equipo"
                                                 >
