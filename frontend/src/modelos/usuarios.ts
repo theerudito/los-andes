@@ -10,6 +10,7 @@ export interface Usuario {
     fecha_creacion: string;
     fecha_modificacion: string;
     rol_id: number;
+    role: string;
 }
 
 export interface UsuarioLogin {

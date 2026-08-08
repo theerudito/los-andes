@@ -1,10 +1,12 @@
-import { createBrowserRouter, type RouteObject } from "react-router-dom";
+import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
 import MainLayout from "./Layout.tsx";
 import { navItems } from "./Sidebar.tsx";
 import { Login } from "../paginas/login/Login.tsx";
 import PaginaHistorial from "../paginas/equipos/PaginaHistorial.tsx";
 import PaginaEntregas from "../paginas/equipos/PaginaEntregas.tsx";
 import PaginaPagos from "../paginas/equipos/PaginaPagos.tsx";
+import React from "react";
+import { useUsuarios } from "../store/useUsuarios.ts";
 
 const extraRoutes: RouteObject[] = [
     {
@@ -51,6 +53,17 @@ const buildRoutes = (): RouteObject[] => {
     return [...routes, ...extraRoutes];
 };
 
+function ProtectedRoute() {
+    const { isLogin } = useUsuarios();
+    const token = localStorage.getItem("token");
+
+    if (!isLogin || !token) {
+        return <Navigate to="/login" replace />;
+    }
+
+    return <MainLayout />;
+}
+
 export const router = createBrowserRouter([
     {
         path: "/login",
@@ -58,18 +71,11 @@ export const router = createBrowserRouter([
     },
     {
         path: "/",
-        element: <MainLayout />,
+        element: <ProtectedRoute />,
         children: buildRoutes(),
     },
     {
         path: "*",
-        element: (
-            <div className="flex h-screen items-center justify-center bg-gray-100">
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-gray-800">404</h1>
-                    <p className="text-gray-500 mt-2">Página no encontrada</p>
-                </div>
-            </div>
-        ),
+        element: <Navigate to="/login" replace />,
     },
 ]);

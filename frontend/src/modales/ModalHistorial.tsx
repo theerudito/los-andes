@@ -9,24 +9,34 @@ import {
 import { useModal } from '../store/useModal.ts';
 import { ModalLista } from '../helpers/ModalLista.ts';
 import { useHistorial } from "../store/useHistorial.ts";
-import React from "react";
+import React, { useEffect } from "react";
 import { toast } from "sonner";
 
 const estadosOpciones = [
-    { estado_id: 1, nombre: "Recibido" },
     { estado_id: 2, nombre: "En diagnóstico" },
     { estado_id: 3, nombre: "Esperando repuestos" },
     { estado_id: 4, nombre: "En reparación" },
     { estado_id: 5, nombre: "Listo para entrega" },
-    { estado_id: 6, nombre: "Entregado" },
     { estado_id: 7, nombre: "Cancelado" }
 ];
 
 export default function ModalHistorial(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
-    const { form_historial, EnviarHistorial, equipo_id } = useHistorial((state) => state);
+    const { form_historial, EnviarHistorial, equipo_id, isEditing } = useHistorial((state) => state);
 
-    function Enviar(e?: React.SubmitEvent) {
+    // FIX 1: Sincronizar el estado por defecto cuando el modal se abre para crear (no editar)
+    useEffect(() => {
+        if (modalName === ModalLista.modal_historial && !isEditing && (!form_historial.estado_id || form_historial.estado_id === 0)) {
+            useHistorial.setState((state) => ({
+                form_historial: {
+                    ...state.form_historial,
+                    estado_id: 2 // Asigna directamente 2 al estado de Zustand
+                }
+            }));
+        }
+    }, [modalName, isEditing, form_historial.estado_id]);
+
+    function Enviar(e?: React.FormEvent<HTMLFormElement>) {
         if (e) e.preventDefault();
 
         if (!form_historial.estado_id || form_historial.estado_id <= 0) {
@@ -120,13 +130,15 @@ export default function ModalHistorial(): React.ReactElement | null {
                             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                                 <Tag size={14} className="text-blue-600" /> Estado del Equipo
                             </label>
+                            {/* FIX 2: Usar form_historial.estado_id directamente sin fallback "|| 2" visual */}
                             <select
-                                value={form_historial.estado_id || 2}
+                                value={form_historial.estado_id || ''}
                                 onChange={handleChangeSelect}
                                 name="estado_id"
                                 required
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-semibold uppercase cursor-pointer shadow-sm"
                             >
+                                <option value="" disabled>SELECCIONE ESTADO</option>
                                 {estadosOpciones.map((e) => (
                                     <option key={e.estado_id} value={e.estado_id}>{e.nombre}</option>
                                 ))}

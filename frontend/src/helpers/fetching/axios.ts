@@ -10,7 +10,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token')
+        const token = localStorage.getItem('token');
         if (token && token !== 'null' && token !== 'undefined' && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -39,8 +39,8 @@ api.interceptors.response.use(
 
         error.message = mensajeError;
 
-        if (error.response?.status === 401 || error.response?.status === 403) {
-            console.error('Sesión expirada o no autorizada');
+        if (error.response?.status === 401) {
+            console.error('Sesión expirada o token inválido');
             localStorage.removeItem('token');
         }
 

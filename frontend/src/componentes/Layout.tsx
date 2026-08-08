@@ -1,20 +1,16 @@
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import React, { useEffect } from "react";
-import {useUsuarios} from "../store/useUsuarios.ts";
+import React from "react";
+import { useUsuarios } from "../store/useUsuarios.ts";
 
-export default function Layout(): React.ReactElement | null {
-    const navigate = useNavigate();
+export default function Layout(): React.ReactElement {
     const { isLogin } = useUsuarios();
+    const token = localStorage.getItem('token');
 
-    useEffect(() => {
-        if (!isLogin) {
-            navigate('/login');
-        }
-    }, [isLogin, navigate]);
-
-   if (!isLogin) return null;
+    if (!isLogin || !token) {
+        return <Navigate to="/login" replace />;
+    }
 
     return (
         <div className="h-screen w-screen flex overflow-hidden bg-gray-50">

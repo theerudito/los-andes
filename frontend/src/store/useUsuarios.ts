@@ -16,6 +16,7 @@ const initialUsuario = (): Usuario => ({
     fecha_creacion: "",
     fecha_modificacion: "",
     rol_id: 0,
+    role: "",
 });
 
 type Data = {
@@ -86,7 +87,8 @@ export const useUsuarios = create<Data>((set, get) => ({
                 password: form_usuario.password,
                 rol_id: form_usuario.rol_id === 0 ? 2 : form_usuario.rol_id,
                 tipo_identificacion: form_usuario.tipo_identificacion,
-                usuario_id: form_usuario.usuario_id
+                usuario_id: form_usuario.usuario_id,
+                role: "",
             };
 
             if (isEditing) {
@@ -122,7 +124,8 @@ export const useUsuarios = create<Data>((set, get) => ({
             await get().ObtenerUsuarios();
             toast.success(data.message);
         } catch (error: any) {
-            toast.error(error?.message);
+            toast.error(error?.message || "No fue posible eliminar el usuario");
+            set({ isLoading: false });
         } finally {
             set({ isLoading: false });
         }

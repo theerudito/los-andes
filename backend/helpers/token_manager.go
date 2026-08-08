@@ -13,21 +13,19 @@ import (
 var accessTokenDuration = 10 * time.Hour
 
 func getSecretKey() []byte {
-
 	_ = godotenv.Load()
 
 	key := os.Getenv("Secret_Key")
 
 	if key == "" {
-		fmt.Println("⚠️  WARNING: SECRET_KEY no está definido en las variables de entorno.")
+		fmt.Println("⚠️ WARNING: SECRET_KEY no está definido en las variables de entorno.")
 	}
 
 	return []byte(key)
 }
 
 func GenerateToken(user models.UsuarioJWT) (string, error) {
-
-	var jwtSecret = []byte(os.Getenv("Secret_Key"))
+	jwtSecret := getSecretKey()
 
 	claims := models.CustomClaims{
 		UserId: user.UsuarioId,

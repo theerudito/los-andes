@@ -155,17 +155,20 @@ export default function PaginaHistorial(): React.ReactElement {
                                         </div>
                                     </td>
 
-                                    <td className="px-4 py-3.5 whitespace-nowrap text-center">
-                                        <div className="flex items-center justify-center gap-1.5">
-                                            <button
-                                                onClick={() => VerHistorial(item.historial_id)}
-                                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
-                                                title="Actualizar / Editar Historial"
-                                            >
-                                                <Pencil className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </td>
+                                    {
+                                        item.estado_id > 1 &&  <td className="px-4 py-3.5 whitespace-nowrap text-center">
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <button
+                                                    onClick={() => VerHistorial(item.historial_id)}
+                                                    className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100 cursor-pointer"
+                                                    title="Actualizar / Editar Historial"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    }
+
                                 </tr>
                             ))
                         ) : (

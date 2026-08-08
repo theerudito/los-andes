@@ -12,6 +12,7 @@ type Usuarios struct {
 	FechaCreacion      string `json:"fecha_creacion"`
 	FechaModificacion  string `json:"fecha_modificacion"`
 	RolId              int    `json:"rol_id"`
+	Role               string `json:"role"`
 }
 
 type UsuarioLogin struct {

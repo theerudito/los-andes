@@ -31,12 +31,14 @@ func ObtenerUsuarios(c *fiber.Ctx) error {
 			u.apellidos,
 			u.email,
 			u.activo,
-			u.rol_id,
+			r.rol_id,
+			r.nombre AS role,
 			COALESCE(strftime('%d/%m/%Y %H:%M:%S', u.fecha_creacion), '') AS fecha_creacion,
 			COALESCE(strftime('%d/%m/%Y %H:%M:%S', u.fecha_modificacion), '') AS fecha_modificacion
 		FROM 
 			usuarios AS u
-    ORDER BY 
+		INNER JOIN roles AS r ON r.rol_id = u.rol_id
+    	ORDER BY 
 			u.usuario_id DESC`)
 
 	if err != nil {
@@ -56,6 +58,7 @@ func ObtenerUsuarios(c *fiber.Ctx) error {
 			&usuario.Email,
 			&usuario.Activo,
 			&usuario.RolId,
+			&usuario.Role,
 			&usuario.FechaCreacion,
 			&usuario.FechaModificacion)
 
@@ -437,8 +440,10 @@ func EliminarUsuario(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
-	if claims.Rol == "TECNICO" || claims.Rol == "VENDEDOR" {
-		return c.Status(409).JSON(fiber.Map{"messaje": "solo usuario administrador puenden realizar esta accion"})
+	if claims.Rol != "ADMINISTRADOR" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"message": "Solo los usuarios administradores pueden realizar esta acción",
+		})
 	}
 
 	err = conn.QueryRow(`SELECT COUNT(*) FROM usuarios WHERE usuario_id = ?`, id).Scan(&UsuarioId)

@@ -598,7 +598,7 @@ func OrdenEntrega(c *fiber.Ctx) error {
 	pdf.CellFormat(60, 5, "Firma de Conformidad Cliente", "", 0, "C", false, 0, "")
 
 	pdf.SetXY(110, yFirmas+2)
-	pdf.CellFormat(60, 5, "Firma Usuario / Entregado Por", "", 1, "C", false, 0, "")
+	pdf.CellFormat(60, 5, "Firma Usuario", "", 1, "C", false, 0, "")
 
 	var buf bytes.Buffer
 	err = pdf.Output(&buf)

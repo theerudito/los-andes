@@ -107,6 +107,7 @@ export default function PaginaUsuarios(): React.ReactElement {
                             <th className="px-4 py-3.5 w-44">Identificación</th>
                             <th className="px-4 py-3.5 min-w-[180px]">Nombres / Apellidos</th>
                             <th className="px-4 py-3.5 min-w-[180px]">Email</th>
+                            <th className="px-4 py-3.5 min-w-[180px]">Perfil</th>
                             <th className="px-4 py-3.5 w-24 text-center">Acciones</th>
                         </tr>
                         </thead>
@@ -128,6 +129,10 @@ export default function PaginaUsuarios(): React.ReactElement {
                                     </td>
                                     <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
                                         {usuario.email}
+                                    </td>
+
+                                    <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
+                                        {usuario.role}
                                     </td>
 
                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
