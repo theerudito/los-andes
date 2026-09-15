@@ -193,7 +193,7 @@ func CrearEstadoEquipo(c *fiber.Ctx) error {
 	}
 
 	switch claims.Rol {
-	case "ADMINISTRADOR":
+	case "SISTEMA", "ADMINISTRADOR":
 		if historial.EstadoId < 2 || historial.EstadoId > 7 {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Permiso denegado. Rango de estados no válido."})
 		}
@@ -339,7 +339,7 @@ func ActualizarEstadoEquipo(c *fiber.Ctx) error {
 	}
 
 	switch claims.Rol {
-	case "ADMINISTRADOR":
+	case "SISTEMA", "ADMINISTRADOR":
 		if historial.EstadoId < 2 || historial.EstadoId > 7 {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Permiso denegado. Rango de estados no válido."})
 		}

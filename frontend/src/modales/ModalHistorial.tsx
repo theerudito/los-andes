@@ -11,30 +11,47 @@ import { ModalLista } from '../helpers/ModalLista.ts';
 import { useHistorial } from "../store/useHistorial.ts";
 import React, { useEffect } from "react";
 import { toast } from "sonner";
+import { ObtenerToken } from "../helpers/jwtDedoce.ts";
 
 const estadosOpciones = [
     { estado_id: 2, nombre: "En diagnóstico" },
     { estado_id: 3, nombre: "Esperando repuestos" },
     { estado_id: 4, nombre: "En reparación" },
     { estado_id: 5, nombre: "Listo para entrega" },
+    { estado_id: 6, nombre: "Entregado" },
     { estado_id: 7, nombre: "Cancelado" }
 ];
 
 export default function ModalHistorial(): React.ReactElement | null {
     const { modalName, CloseModal } = useModal((state) => state);
     const { form_historial, EnviarHistorial, equipo_id, isEditing } = useHistorial((state) => state);
+    const rol = ObtenerToken()?.rol;
+    const estadosPermitidos = estadosOpciones.filter(({ estado_id }) => {
+        switch (rol) {
+            case "SISTEMA":
+            case "ADMINISTRADOR":
+                return estado_id >= 2 && estado_id <= 7;
+            case "TECNICO":
+                return estado_id >= 2 && estado_id <= 5;
+            case "VENDEDOR":
+                return estado_id === 7;
+            default:
+                return false;
+        }
+    });
+    const estadoPredeterminado = estadosPermitidos[0]?.estado_id;
 
     // FIX 1: Sincronizar el estado por defecto cuando el modal se abre para crear (no editar)
     useEffect(() => {
-        if (modalName === ModalLista.modal_historial && !isEditing && (!form_historial.estado_id || form_historial.estado_id === 0)) {
+        if (modalName === ModalLista.modal_historial && !isEditing && (!form_historial.estado_id || form_historial.estado_id === 0) && estadoPredeterminado) {
             useHistorial.setState((state) => ({
                 form_historial: {
                     ...state.form_historial,
-                    estado_id: 2 // Asigna directamente 2 al estado de Zustand
+                    estado_id: estadoPredeterminado
                 }
             }));
         }
-    }, [modalName, isEditing, form_historial.estado_id]);
+    }, [modalName, isEditing, form_historial.estado_id, estadoPredeterminado]);
 
     function Enviar(e?: React.FormEvent<HTMLFormElement>) {
         if (e) e.preventDefault();
@@ -87,7 +104,7 @@ export default function ModalHistorial(): React.ReactElement | null {
         });
     }
 
-    if (modalName !== ModalLista.modal_historial) return null;
+    if (modalName !== ModalLista.modal_historial || estadosPermitidos.length === 0) return null;
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[60] p-4 transition-all duration-300">
@@ -130,7 +147,6 @@ export default function ModalHistorial(): React.ReactElement | null {
                             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                                 <Tag size={14} className="text-blue-600" /> Estado del Equipo
                             </label>
-                            {/* FIX 2: Usar form_historial.estado_id directamente sin fallback "|| 2" visual */}
                             <select
                                 value={form_historial.estado_id || ''}
                                 onChange={handleChangeSelect}
@@ -139,7 +155,7 @@ export default function ModalHistorial(): React.ReactElement | null {
                                 className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-semibold uppercase cursor-pointer shadow-sm"
                             >
                                 <option value="" disabled>SELECCIONE ESTADO</option>
-                                {estadosOpciones.map((e) => (
+                                {estadosPermitidos.map((e) => (
                                     <option key={e.estado_id} value={e.estado_id}>{e.nombre}</option>
                                 ))}
                             </select>

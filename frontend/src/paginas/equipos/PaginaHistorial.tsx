@@ -10,12 +10,28 @@ import {
 import { useModal } from '../../store/useModal.ts';
 import { ModalLista } from '../../helpers/ModalLista.ts';
 import {useHistorial} from "../../store/useHistorial.ts";
+import { ObtenerToken } from '../../helpers/jwtDedoce.ts';
 
 export default function PaginaHistorial(): React.ReactElement {
     const { OpenModal } = useModal((state) => state);
     const { ObtenerHistoriales, ObtenerHistorial, DescargarPdf, listar_historial, setEquipoId } = useHistorial((state) => state);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const rol = ObtenerToken()?.rol;
+    const puedeCrearHistorial = ['SISTEMA', 'ADMINISTRADOR', 'TECNICO', 'VENDEDOR'].includes(rol ?? '');
+    const puedeGestionarEstado = (estadoId: number) => {
+        switch (rol) {
+            case 'SISTEMA':
+            case 'ADMINISTRADOR':
+                return estadoId >= 2 && estadoId <= 7;
+            case 'TECNICO':
+                return estadoId >= 2 && estadoId <= 5;
+            case 'VENDEDOR':
+                return estadoId === 7;
+            default:
+                return false;
+        }
+    };
 
     const equipo_id = searchParams.get('equipo_id');
 
@@ -78,13 +94,13 @@ export default function PaginaHistorial(): React.ReactElement {
                     <div className="flex flex-wrap items-center gap-2">
 
 
-                        <button
+                        {puedeCrearHistorial && <button
                             onClick={() => OpenModal(ModalLista.modal_historial)}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Nuevo Historial</span>
-                        </button>
+                        </button>}
 
                         <button
                             onClick={() => DescargarPdf(Number(equipo_id))}
@@ -156,7 +172,7 @@ export default function PaginaHistorial(): React.ReactElement {
                                     </td>
 
                                     {
-                                        item.estado_id > 1 &&  <td className="px-4 py-3.5 whitespace-nowrap text-center">
+                                        puedeGestionarEstado(item.estado_id) &&  <td className="px-4 py-3.5 whitespace-nowrap text-center">
                                             <div className="flex items-center justify-center gap-1.5">
                                                 <button
                                                     onClick={() => VerHistorial(item.historial_id)}

@@ -3,6 +3,7 @@ import { jwtDecode } from "jwt-decode";
 interface TokenPayload {
     name: string;
     user_id: number;
+    rol: string;
 }
 
 export const ObtenerToken = (): TokenPayload | null => {
@@ -18,6 +19,7 @@ export const ObtenerToken = (): TokenPayload | null => {
         return {
             name: decoded.name,
             user_id: decoded.user_id,
+            rol: decoded.rol,
         };
     } catch {
         return null;
