@@ -121,19 +121,19 @@ export default function PaginaHistorial(): React.ReactElement {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
-        <div className="overflow-x-auto max-h-[600px] overflow-y-auto w-full">
+        <div className="overflow-x-auto max-h-150 overflow-y-auto w-full">
           <table className="w-full min-w-full text-left text-sm text-gray-600">
             <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold z-10">
               <tr>
                 <th className="px-4 py-3.5 w-16">ID</th>
-                <th className="px-4 py-3.5 min-w-[160px]">Cliente</th>
-                <th className="px-4 py-3.5 min-w-[160px]">Orden</th>
-                <th className="px-4 py-3.5 min-w-[160px]">Equipo / Serie</th>
-                <th className="px-4 py-3.5 min-w-[220px]">
+                <th className="px-4 py-3.5 min-w-40">Cliente</th>
+                <th className="px-4 py-3.5 min-w-40">Orden</th>
+                <th className="px-4 py-3.5 min-w-40">Equipo / Serie</th>
+                <th className="px-4 py-3.5 min-w-55">
                   Observaciones Técnicas
                 </th>
                 <th className="px-4 py-3.5 w-32">Estado</th>
-                <th className="px-4 py-3.5 min-w-[140px]">Técnico</th>
+                <th className="px-4 py-3.5 min-w-35">Técnico</th>
                 <th className="px-4 py-3.5 w-24 text-center">Acciones</th>
               </tr>
             </thead>
