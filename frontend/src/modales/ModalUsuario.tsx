@@ -65,6 +65,7 @@ export default function ModalUsuario(): React.ReactElement | null {
                 fecha_creacion: "",
                 fecha_modificacion: "",
                 rol_id: 0,
+                role: "",
             },
             isEditing: false,
         });

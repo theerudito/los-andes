@@ -5,7 +5,6 @@ import { Login } from "../paginas/login/Login.tsx";
 import PaginaHistorial from "../paginas/equipos/PaginaHistorial.tsx";
 import PaginaEntregas from "../paginas/equipos/PaginaEntregas.tsx";
 import PaginaPagos from "../paginas/equipos/PaginaPagos.tsx";
-import React from "react";
 import { useUsuarios } from "../store/useUsuarios.ts";
 
 const extraRoutes: RouteObject[] = [
