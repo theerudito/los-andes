@@ -162,9 +162,9 @@ export default function PaginaEquipos(): React.ReactElement {
             return;
         }
 
-        await ObtenerClientePorIdentifiacion(identificacion);
+        const clienteEncontrado = await ObtenerClientePorIdentifiacion(identificacion);
 
-        if (form_cliente.identificacion !== ""){
+        if (clienteEncontrado) {
             toast.success("Cliente cargado correctamente");
         } else {
             toast.error("No se encontró ningún cliente registrado con esa identificación");

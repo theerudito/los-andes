@@ -25,7 +25,7 @@ export default function ModalEquipos(): React.ReactElement | null {
     const { modalName, CloseModal, OpenModal } = useModal((state) => state);
     const { form_equipo, EnviarEquipo } = useEquipos((state) => state);
     const { ObtenerMarcas, listar_marca } = useMarcas((state) => state);
-    const { form_cliente, ObtenerClientePorIdentifiacion } = useClientes((state) => state);
+    const { form_cliente, ObtenerClientePorIdentifiacion, PrepararNuevoCliente, reset: resetCliente } = useClientes((state) => state);
 
     const formatDateToDbStr = (date: Date | null): string => {
         if (!date) return '';
@@ -89,22 +89,7 @@ export default function ModalEquipos(): React.ReactElement | null {
     };
 
     function LimpiarIdentificacion() {
-        useClientes.setState({
-            form_cliente: {
-                cliente_id: 0,
-                identificacion: "",
-                tipo_identificacion: "",
-                nombres: "",
-                apellidos: "",
-                telefono: "",
-                email: "",
-                direccion: "",
-                fecha_creacion: "",
-                fecha_modificacion: "",
-            },
-            clienteId: 0,
-            isEditing: false,
-        });
+        resetCliente();
 
         useEquipos.setState((state) => ({
             form_equipo: {
@@ -137,35 +122,12 @@ export default function ModalEquipos(): React.ReactElement | null {
             isEditing: false,
         });
 
-        useClientes.setState({
-            form_cliente: {
-                cliente_id: 0,
-                identificacion: "",
-                tipo_identificacion: "",
-                nombres: "",
-                apellidos: "",
-                telefono: "",
-                email: "",
-                direccion: "",
-                fecha_creacion: "",
-                fecha_modificacion: "",
-            },
-            clienteId: 0,
-            isEditing: false,
-        });
-
-        setTimeout(() => {
-            CloseModal();
-        }, 0);
+        resetCliente();
+        CloseModal();
     }
 
     function AbrirModalCliente() {
-        useEquipos.setState((state) => ({
-            form_equipo: {
-                ...state.form_equipo,
-                desdeEquipo: true
-            }
-        }));
+        PrepararNuevoCliente();
         OpenModal(ModalLista.modal_cliente);
     }
 
@@ -175,12 +137,10 @@ export default function ModalEquipos(): React.ReactElement | null {
             return;
         }
 
-        await ObtenerClientePorIdentifiacion(form_cliente.identificacion);
+        const clienteEncontrado = await ObtenerClientePorIdentifiacion(form_cliente.identificacion);
 
-        const clienteActual = useClientes.getState().form_cliente;
-        const idClienteActual = useClientes.getState().clienteId;
-
-        if (idClienteActual > 0 && clienteActual) {
+        if (clienteEncontrado) {
+            const clienteActual = useClientes.getState().form_cliente;
             useEquipos.setState((state) => ({
                 form_equipo: {
                     ...state.form_equipo,
@@ -190,6 +150,12 @@ export default function ModalEquipos(): React.ReactElement | null {
 
             toast.success("Cliente cargado correctamente");
         } else {
+            useEquipos.setState((state) => ({
+                form_equipo: {
+                    ...state.form_equipo,
+                    cliente_id: 0,
+                }
+            }));
             toast.error("No se encontró ningún cliente registrado con esa identificación");
         }
     }
@@ -345,7 +311,7 @@ export default function ModalEquipos(): React.ReactElement | null {
                                 </button>
                             </div>
 
-                            <div className="h-10 flex items-center px-3 text-xs text-slate-700 font-bold bg-white rounded-lg border border-slate-300 shadow-sm w-full truncate">
+                            <div className="h-10 flex items-center px-3 text-xs text-slate-700 font-bold uppercase bg-white rounded-lg border border-slate-300 shadow-sm w-full truncate">
                                 {/* 🛠️ FIX 4: Leemos nombres y apellidos desde form_cliente */}
                                 {form_cliente.nombres || form_cliente.apellidos
                                     ? `${form_cliente.nombres || ''} ${form_cliente.apellidos || ''}`.trim()

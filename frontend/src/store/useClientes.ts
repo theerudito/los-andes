@@ -16,8 +16,15 @@ const initialCliente = (): Cliente => ({
     fecha_modificacion: "",
 });
 
+type ClienteSnapshot = {
+    form_cliente: Cliente;
+    clienteId: number;
+    isEditing: boolean;
+};
+
 type Data = {
     form_cliente: Cliente;
+    clienteAnterior: ClienteSnapshot | null;
     listar_clientes: Cliente[];
     isEditing: boolean;
     clienteId : number;
@@ -28,11 +35,15 @@ type Data = {
     EnviarCliente: () => Promise<Cliente | null>;
     EliminarCliente: (id: number) => Promise<void>;
     DescargarPdf: (req: RPT_Clientes) => Promise<void>;
+    PrepararNuevoCliente: () => void;
+    RestaurarClienteAnterior: () => void;
+    SeleccionarCliente: (cliente: Cliente) => void;
     reset: () => void;
 };
 
 export const useClientes = create<Data>((set, get) => ({
     form_cliente: initialCliente(),
+    clienteAnterior: null,
     listar_clientes: [],
     isEditing: false,
     isLoading: false,
@@ -71,14 +82,19 @@ export const useClientes = create<Data>((set, get) => ({
                     fecha_modificacion: data.fecha_modificacion,
                 };
 
-                set({ form_cliente: cliente, clienteId: data.cliente_id });
+                set({
+                    form_cliente: cliente,
+                    clienteId: data.cliente_id,
+                    isEditing: false,
+                    clienteAnterior: null,
+                });
                 return true;
             }
 
-            set({ clienteId: 0 });
+            set({ form_cliente: initialCliente(), clienteId: 0, isEditing: false });
             return false;
-        } catch (error) {
-            set({ clienteId: 0 });
+        } catch {
+            set({ form_cliente: initialCliente(), clienteId: 0, isEditing: false });
             return false;
         }
     },
@@ -98,7 +114,7 @@ export const useClientes = create<Data>((set, get) => ({
     },
 
     EnviarCliente: async () => {
-        const { form_cliente, isEditing, ObtenerClientes, reset } = get();
+        const { form_cliente, isEditing, ObtenerClientes } = get();
         set({ isLoading: true });
 
         try {
@@ -135,9 +151,12 @@ export const useClientes = create<Data>((set, get) => ({
                 };
             }
 
-            set({ clienteId: clienteProcesado.cliente_id, isLoading: false });
-
-            reset();
+            set({
+                form_cliente: initialCliente(),
+                clienteId: 0,
+                isEditing: false,
+                isLoading: false,
+            });
             await ObtenerClientes();
 
             return clienteProcesado;
@@ -183,9 +202,45 @@ export const useClientes = create<Data>((set, get) => ({
         }
     },
 
+    PrepararNuevoCliente: () => {
+        const { form_cliente, clienteId, isEditing } = get();
+        set({
+            clienteAnterior: {
+                form_cliente: { ...form_cliente },
+                clienteId,
+                isEditing,
+            },
+            form_cliente: initialCliente(),
+            clienteId: 0,
+            isEditing: false,
+        });
+    },
+
+    RestaurarClienteAnterior: () => {
+        const { clienteAnterior } = get();
+        if (!clienteAnterior) return;
+
+        set({
+            form_cliente: { ...clienteAnterior.form_cliente },
+            clienteId: clienteAnterior.clienteId,
+            isEditing: clienteAnterior.isEditing,
+            clienteAnterior: null,
+        });
+    },
+
+    SeleccionarCliente: (cliente: Cliente) =>
+        set({
+            form_cliente: cliente,
+            clienteId: cliente.cliente_id,
+            isEditing: false,
+            clienteAnterior: null,
+        }),
+
     reset: () =>
         set({
             form_cliente: initialCliente(),
+            clienteAnterior: null,
+            clienteId: 0,
             isEditing: false,
             isLoading: false,
         }),

@@ -6,8 +6,14 @@ import { useClientes } from "../store/useClientes.ts";
 import { useEquipos } from "../store/useEquipos.ts";
 
 export default function ModalCliente(): React.ReactElement | null {
-    const { modalName, CloseModal, OpenModal } = useModal((state) => state);
-    const { form_cliente, EnviarCliente, reset } = useClientes((state) => state);
+    const { modalName, CloseModal } = useModal((state) => state);
+    const {
+        form_cliente,
+        EnviarCliente,
+        reset,
+        RestaurarClienteAnterior,
+        SeleccionarCliente,
+    } = useClientes((state) => state);
 
     const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -33,14 +39,15 @@ export default function ModalCliente(): React.ReactElement | null {
     };
 
     function Clear() {
-        useEquipos.setState((state) => ({
-            form_equipo: {
-                ...state.form_equipo,
-                desdeEquipo: false
-            }
-        }));
+        const vieneDesdeEquipo = useModal.getState().modalStack.at(-2) === ModalLista.modal_equipo;
+
+        if (vieneDesdeEquipo) {
+            RestaurarClienteAnterior();
+        } else {
+            reset();
+        }
+
         CloseModal();
-        reset();
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -48,29 +55,20 @@ export default function ModalCliente(): React.ReactElement | null {
 
         const clienteGuardado = await EnviarCliente();
 
-        if (clienteGuardado && (clienteGuardado.cliente_id > 0 || clienteGuardado.cliente_id > 0)) {
-            const idCliente = clienteGuardado.cliente_id || clienteGuardado.cliente_id;
-
-            const equipoState = useEquipos.getState().form_equipo as any;
-            const vieneDesdeEquipo = Boolean(equipoState?.desdeEquipo);
+        if (clienteGuardado && clienteGuardado.cliente_id > 0) {
+            const vieneDesdeEquipo = useModal.getState().modalStack.at(-2) === ModalLista.modal_equipo;
 
             if (vieneDesdeEquipo) {
-                useEquipos.setState((state: any) => ({
+                useEquipos.setState((state) => ({
                     form_equipo: {
                         ...state.form_equipo,
-                        cliente_id: idCliente,
-                        identificacion: clienteGuardado.identificacion,
-                        nombres: clienteGuardado.nombres,
-                        apellidos: clienteGuardado.apellidos,
-                        desdeEquipo: false // Reseteamos la marca
+                        cliente_id: clienteGuardado.cliente_id,
                     }
                 }));
 
-                useClientes.setState({ clienteId: idCliente });
+                SeleccionarCliente(clienteGuardado);
 
                 CloseModal();
-                reset();
-                OpenModal(ModalLista.modal_equipo);
             } else {
                 Clear();
             }
