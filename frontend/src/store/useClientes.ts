@@ -31,6 +31,7 @@ type Data = {
     isLoading: boolean;
     ObtenerClientes: () => Promise<void>;
     ObtenerCliente: (id?: number) => Promise<void>;
+    BuscarClientePorIdentificacion: (identificacion: string) => Promise<Cliente | null>;
     ObtenerClientePorIdentifiacion: (identificacion: string) => Promise<boolean>;
     EnviarCliente: () => Promise<Cliente | null>;
     EliminarCliente: (id: number) => Promise<void>;
@@ -64,12 +65,12 @@ export const useClientes = create<Data>((set, get) => ({
         }
     },
 
-    ObtenerClientePorIdentifiacion: async (identificacion: string) => {
+    BuscarClientePorIdentificacion: async (identificacion: string) => {
         try {
             const data = await clienteService.getClienteByIdentificacion(identificacion);
 
             if (data && data.cliente_id) {
-                const cliente = {
+                return {
                     cliente_id: data.cliente_id,
                     identificacion: data.identificacion,
                     tipo_identificacion: data.tipo_identificacion,
@@ -81,22 +82,29 @@ export const useClientes = create<Data>((set, get) => ({
                     fecha_creacion: data.fecha_creacion,
                     fecha_modificacion: data.fecha_modificacion,
                 };
-
-                set({
-                    form_cliente: cliente,
-                    clienteId: data.cliente_id,
-                    isEditing: false,
-                    clienteAnterior: null,
-                });
-                return true;
             }
 
-            set({ form_cliente: initialCliente(), clienteId: 0, isEditing: false });
-            return false;
+            return null;
         } catch {
-            set({ form_cliente: initialCliente(), clienteId: 0, isEditing: false });
-            return false;
+            return null;
         }
+    },
+
+    ObtenerClientePorIdentifiacion: async (identificacion: string) => {
+        const cliente = await get().BuscarClientePorIdentificacion(identificacion);
+
+        if (cliente) {
+            set({
+                form_cliente: cliente,
+                clienteId: cliente.cliente_id,
+                isEditing: false,
+                clienteAnterior: null,
+            });
+            return true;
+        }
+
+        set({ form_cliente: initialCliente(), clienteId: 0, isEditing: false });
+        return false;
     },
 
     ObtenerCliente: async (id?: number) => {

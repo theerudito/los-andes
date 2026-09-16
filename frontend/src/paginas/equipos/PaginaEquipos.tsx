@@ -25,6 +25,7 @@ import ReactDatePicker from "react-datepicker";
 import { formatearFecha } from "../../helpers/formatearFecha.ts";
 import { useClientes } from "../../store/useClientes.ts";
 import {toast} from "sonner";
+import type { Cliente } from "../../modelos/clientes.ts";
 
 const estadosOpciones = [
     { estado_id: 0, nombre: "Todos" },
@@ -39,10 +40,11 @@ const estadosOpciones = [
 
 export default function PaginaEquipos(): React.ReactElement {
     const OpenModal = useModal((state) => state.OpenModal);
-    const { ObtenerClientePorIdentifiacion, form_cliente } = useClientes((state) => state);
-    const { ObtenerEquipos, ObtenerEquipo, EliminarEquipo, DescargarPdf, DescargarOrdenPdf, listar_equipos } = useEquipos((state) => state);
+    const { BuscarClientePorIdentificacion, reset: resetCliente } = useClientes((state) => state);
+    const { ObtenerEquipos, ObtenerEquipo, EliminarEquipo, DescargarPdf, DescargarOrdenPdf, listar_equipos, reset: resetEquipo } = useEquipos((state) => state);
 
     const [identificacion, setIdentificacion] = useState<string>("");
+    const [clienteReporte, setClienteReporte] = useState<Cliente | null>(null);
     const [estado, setEstado] = useState<number>(0);
     const [busqueda, setBusqueda] = useState<string>('');
     const [periodoSelect, setPeriodoSelect] = useState<string>("hoy");
@@ -83,11 +85,17 @@ export default function PaginaEquipos(): React.ReactElement {
         ObtenerEquipo(id);
     }
 
+    function NuevoEquipo() {
+        resetEquipo();
+        resetCliente();
+        OpenModal(ModalLista.modal_equipo);
+    }
+
     function VerReporte() {
         const obj: RPT_Equipos = {
             fecha_desde: formatearFecha(fechaDesde),
             fecha_hasta: formatearFecha(fechaHasta),
-            cliente_id: identificacion !== "" ? form_cliente.cliente_id : 0,
+            cliente_id: clienteReporte?.cliente_id ?? 0,
             estado: estado
         };
         DescargarPdf(obj);
@@ -162,7 +170,8 @@ export default function PaginaEquipos(): React.ReactElement {
             return;
         }
 
-        const clienteEncontrado = await ObtenerClientePorIdentifiacion(identificacion);
+        const clienteEncontrado = await BuscarClientePorIdentificacion(identificacion);
+        setClienteReporte(clienteEncontrado);
 
         if (clienteEncontrado) {
             toast.success("Cliente cargado correctamente");
@@ -173,9 +182,7 @@ export default function PaginaEquipos(): React.ReactElement {
 
     function ResetField() {
         setIdentificacion("");
-        form_cliente.identificacion = "";
-        form_cliente.nombres = "";
-        form_cliente.apellidos = "";
+        setClienteReporte(null);
     }
 
     function Reset() {
@@ -184,9 +191,7 @@ export default function PaginaEquipos(): React.ReactElement {
         setPeriodoSelect("hoy");
         setFechaDesde(new Date());
         setFechaHasta(new Date());
-        form_cliente.identificacion = "";
-        form_cliente.nombres = "";
-        form_cliente.apellidos = "";
+        setClienteReporte(null);
     }
 
     function Eliminar (id:number){
@@ -250,7 +255,7 @@ export default function PaginaEquipos(): React.ReactElement {
                             </button>
 
                             <button
-                                onClick={() => OpenModal(ModalLista.modal_equipo)}
+                                onClick={NuevoEquipo}
                                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm cursor-pointer"
                             >
                                 <Plus className="w-3.5 h-3.5" />
@@ -270,12 +275,15 @@ export default function PaginaEquipos(): React.ReactElement {
                         <div className="xl:col-span-3 flex flex-col gap-1.5">
                             <label className="text-xs font-semibold text-gray-600 flex items-center gap-1 truncate">
                                 <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                {!form_cliente.identificacion ? "Cliente" : `Cliente: ${form_cliente.nombres} ${form_cliente.apellidos}`}
+                                {!clienteReporte ? "Cliente" : `Cliente: ${clienteReporte.nombres} ${clienteReporte.apellidos}`}
                             </label>
                             <div className="flex items-center h-9">
                                 <input
                                     value={identificacion}
-                                    onChange={(e) => setIdentificacion(e.target.value)}
+                                    onChange={(e) => {
+                                        setIdentificacion(e.target.value);
+                                        setClienteReporte(null);
+                                    }}
                                     name="identificacion"
                                     type="number"
                                     placeholder="Identificación / Cédula"
