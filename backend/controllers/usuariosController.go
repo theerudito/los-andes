@@ -440,10 +440,8 @@ func EliminarUsuario(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "error al leer los clains"})
 	}
 
-	if claims.Rol != "ADMINISTRADOR" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"message": "Solo los usuarios administradores pueden realizar esta acción",
-		})
+	if claims.Rol == "TECNICO" || claims.Rol == "VENDEDOR" {
+		return c.Status(409).JSON(fiber.Map{"message": "solo usuarios administrador pueden realizar esta accion"})
 	}
 
 	err = conn.QueryRow(`SELECT COUNT(*) FROM usuarios WHERE usuario_id = ?`, id).Scan(&UsuarioId)
